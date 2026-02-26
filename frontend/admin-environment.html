@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SellerOS — Admin Environment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --white: #ffffff;
+    --surface: #ffffff;
+    --navy: #0f1b2d;
+    --navy2: #162234;
+    --navy3: #1e2f47;
+    --border: #e5e9f0;
+    --teal: #0d8a8a;
+    --teal-light: #e6f4f4;
+    --amber: #d97706;
+    --amber-light: #fef3c7;
+    --red: #dc2626;
+    --red-light: #fee2e2;
+    --green: #059669;
+    --green-light: #d1fae5;
+    --blue: #2563eb;
+    --blue-light: #dbeafe;
+    --purple: #7c3aed;
+    --text: #0f1b2d;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --sans: 'Space Grotesk', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* LOGIN */
+  #login-screen {
+    position: fixed; inset: 0;
+    background: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  #login-screen.hidden { opacity: 0; transform: scale(0.97); pointer-events: none; }
+
+  .login-container {
+    display: flex; width: min(960px, 96vw);
+    border-radius: 24px; overflow: hidden;
+    box-shadow: 0 60px 160px rgba(0,0,0,0.5);
+    animation: popIn 0.6s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes popIn {
+    from { opacity:0; transform: scale(0.93) translateY(20px); }
+    to { opacity:1; transform: scale(1) translateY(0); }
+  }
+
+  .login-left {
+    flex: 1; background: var(--navy3);
+    padding: 52px; display: flex; flex-direction: column; gap: 40px;
+    position: relative; overflow: hidden;
+  }
+  .login-left::before {
+    content: 'ADMIN';
+    position: absolute; right: -20px; top: 50%; transform: translateY(-50%) rotate(90deg);
+    font-size: 120px; font-weight: 700; color: rgba(255,255,255,0.02); letter-spacing: 20px;
+    pointer-events: none; font-family: var(--mono);
+  }
+  .login-brand { display: flex; align-items: center; gap: 10px; }
+  .brand-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--teal);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: white;
+  }
+  .brand-name { font-size: 18px; font-weight: 700; color: white; }
+  .brand-tag { font-size: 11px; color: rgba(255,255,255,0.4); font-family: var(--mono); letter-spacing: 2px; text-transform: uppercase; }
+
+  .login-tagline { font-size: 36px; font-weight: 600; color: white; line-height: 1.2; }
+  .login-tagline em { color: var(--teal); font-style: normal; display: block; }
+
+  .login-features { display: flex; flex-direction: column; gap: 14px; }
+  .feature-item { display: flex; align-items: center; gap: 12px; }
+  .feature-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+  .feature-text { font-size: 13px; color: rgba(255,255,255,0.55); }
+
+  .login-right {
+    width: 400px; background: var(--white);
+    padding: 52px 44px; display: flex; flex-direction: column; justify-content: center; gap: 28px;
+  }
+  /* .login-head {} */
+  .login-h1 { font-size: 26px; font-weight: 700; }
+  .login-p { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+
+  .lfield { display: flex; flex-direction: column; gap: 8px; }
+  .lfield label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+  .lfield input, .lfield select {
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-family: var(--sans); font-size: 14px;
+    color: var(--text); outline: none; background: var(--bg); width: 100%;
+    transition: border-color 0.2s;
+  }
+  .lfield input:focus, .lfield select:focus { border-color: var(--teal); background: white; }
+
+  .login-btn {
+    background: var(--navy); color: white;
+    border: none; border-radius: 10px; padding: 14px;
+    font-size: 14px; font-weight: 600; cursor: pointer; width: 100%;
+    font-family: var(--sans); transition: background 0.2s, transform 0.1s;
+  }
+  .login-btn:hover { background: var(--navy3); }
+  .login-btn:active { transform: scale(0.98); }
+  .login-meta { font-size: 11px; color: var(--text-dim); text-align: center; font-family: var(--mono); }
+
+  /* MAIN APP */
+  #app { display: none; min-height: 100vh; }
+  #app.show { display: flex; }
+
+  /* TOP NAV */
+  .topnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 56px;
+    background: var(--navy);
+    display: flex; align-items: center; padding: 0 20px; gap: 16px;
+    z-index: 200;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .topnav-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+  .topnav-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--teal); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; }
+  .topnav-name { font-size: 15px; font-weight: 700; color: white; }
+  .topnav-env { font-size: 10px; color: rgba(255,255,255,0.35); margin-left: 2px; font-family: var(--mono); }
+
+  .topnav-tabs { display: flex; gap: 2px; margin-left: 24px; }
+  .topnav-tab {
+    padding: 6px 14px; border-radius: 7px;
+    font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.5);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .topnav-tab:hover { color: white; background: rgba(255,255,255,0.06); }
+  .topnav-tab.active { background: rgba(255,255,255,0.1); color: white; }
+
+  .topnav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .nav-role-badge {
+    background: rgba(13,138,138,0.2); color: #4dd9c0;
+    padding: 4px 10px; border-radius: 6px; font-size: 11px; font-family: var(--mono); font-weight: 600;
+    border: 1px solid rgba(13,138,138,0.3);
+  }
+  .nav-user { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 10px; border-radius: 8px; transition: background 0.15s; }
+  .nav-user:hover { background: rgba(255,255,255,0.07); }
+  .nav-avatar { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg, var(--teal), #2563eb); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
+  .nav-username { font-size: 13px; color: rgba(255,255,255,0.8); font-weight: 500; }
+  .logout-link { font-size: 12px; color: rgba(255,255,255,0.3); cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
+  .logout-link:hover { color: #ff6b6b; background: rgba(255,107,107,0.1); }
+
+  /* LAYOUT */
+  .main { display: flex; padding-top: 56px; min-height: 100vh; }
+  .sidebar {
+    width: 200px; flex-shrink: 0;
+    background: var(--white); border-right: 1px solid var(--border);
+    position: fixed; left: 0; top: 56px; bottom: 0;
+    overflow-y: auto; padding: 20px 12px;
+  }
+  .sidebar-section { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 0 10px; margin-bottom: 6px; margin-top: 20px; font-family: var(--mono); }
+  .sidebar-section:first-child { margin-top: 0; }
+  .slink {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .slink:hover { background: var(--bg); color: var(--text); }
+  .slink.active { background: var(--teal-light); color: var(--teal); }
+  .slink-icon { font-size: 14px; width: 18px; text-align: center; }
+  .slink-badge { margin-left: auto; background: var(--navy); color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-family: var(--mono); }
+
+  /* CONTENT */
+  .content { margin-left: 200px; flex: 1; padding: 28px 32px; }
+  .page { display: none; }
+  .page.active { display: block; animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+
+  /* PAGE HEADER */
+  .ph { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .ph-title { font-size: 20px; font-weight: 700; }
+  .ph-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .ph-right { display: flex; gap: 10px; align-items: center; }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px; position: relative; overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .kpi-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-1px); }
+  .kpi-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+  .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 14px; }
+  .kpi-label { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+  .kpi-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .kpi-footer { margin-top: 8px; font-size: 12px; }
+  .kpi-up { color: var(--green); }
+  .kpi-down { color: var(--red); }
+  .kpi-neutral { color: var(--text-muted); }
+
+  /* CHART AREA */
+  .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card, .list-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+  }
+  .card-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .card-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+
+  /* BAR CHART */
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; }
+  .bar-group { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+  .bar-wrap { display: flex; gap: 3px; align-items: flex-end; height: 120px; }
+  .bar { border-radius: 4px 4px 0 0; min-width: 12px; transition: opacity 0.2s; cursor: pointer; }
+  .bar:hover { opacity: 0.7; }
+  .bar-label { font-size: 10px; color: var(--text-dim); font-family: var(--mono); }
+
+  /* PIE DONUT */
+  .donut-wrap { display: flex; align-items: center; gap: 20px; }
+  svg.donut { transform: rotate(-90deg); }
+  .donut-legend { display: flex; flex-direction: column; gap: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .legend-label { font-size: 12px; color: var(--text-muted); }
+  .legend-val { font-size: 13px; font-weight: 600; margin-left: auto; }
+
+  /* TABLE */
+  .table-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+  .table-header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .table-title { font-size: 14px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--bg); }
+  th { padding: 11px 16px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; font-family: var(--mono); white-space: nowrap; }
+  td { padding: 13px 16px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--bg); }
+
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    font-family: var(--mono); white-space: nowrap;
+  }
+  .tag-green { background: var(--green-light); color: var(--green); }
+  .tag-amber { background: var(--amber-light); color: var(--amber); }
+  .tag-red { background: var(--red-light); color: var(--red); }
+  .tag-blue { background: var(--blue-light); color: var(--blue); }
+  .tag-teal { background: var(--teal-light); color: var(--teal); }
+  .tag-navy { background: #e8ecf3; color: var(--navy); }
+  .tag-purple { background: #ede9fe; color: var(--purple); }
+
+  /* FILTER BAR */
+  .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .search-wrap {
+    flex: 1; min-width: 200px; max-width: 320px;
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    transition: border-color 0.2s;
+  }
+  .search-wrap:focus-within { border-color: var(--teal); }
+  .search-wrap input { background: none; border: none; font-family: var(--sans); font-size: 13px; color: var(--text); outline: none; flex: 1; }
+  .search-wrap input::placeholder { color: var(--text-dim); }
+  .filter-sel {
+    background: var(--white); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 9px 12px; font-family: var(--sans); font-size: 13px;
+    color: var(--text); cursor: pointer; outline: none;
+    transition: border-color 0.2s;
+  }
+  .filter-sel:focus { border-color: var(--teal); }
+
+  /* BUTTONS */
+  .btn-primary {
+    background: var(--navy); color: white; border: none;
+    border-radius: 9px; padding: 9px 18px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: var(--sans); transition: background 0.2s;
+  }
+  .btn-primary:hover { background: var(--navy3); }
+  .btn-outline {
+    background: white; color: var(--text); border: 1.5px solid var(--border);
+    border-radius: 9px; padding: 9px 18px; font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: var(--sans); transition: all 0.15s;
+  }
+  .btn-outline:hover { border-color: var(--teal); color: var(--teal); }
+  .btn-sm {
+    background: white; border: 1.5px solid var(--border);
+    border-radius: 7px; padding: 5px 12px; font-size: 12px; font-weight: 500;
+    color: var(--text-muted); cursor: pointer; font-family: var(--sans);
+    transition: all 0.15s;
+  }
+  .btn-sm:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* USER MANAGEMENT */
+  .user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .user-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; transition: box-shadow 0.2s;
+  }
+  .user-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+  .user-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .uavatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: white; flex-shrink: 0; }
+  .uname { font-size: 15px; font-weight: 600; }
+  .uemail { font-size: 12px; color: var(--text-muted); }
+  .user-card-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .user-card-actions { display: flex; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  /* DB INSIGHTS */
+  .db-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .query-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .qcard-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .qcard-title { font-size: 13px; font-weight: 700; }
+  .qcard-body { padding: 16px 20px; }
+  pre.sql {
+    background: var(--navy); color: #a8d8ea; font-family: var(--mono); font-size: 11px;
+    padding: 16px; border-radius: 10px; overflow-x: auto; line-height: 1.7;
+  }
+  .sql-keyword { color: #4dd9c0; }
+  .sql-string { color: #ffd580; }
+  .sql-comment { color: #4a5568; font-style: italic; }
+  .explain-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .explain-row:last-child { border: none; }
+  .explain-key { color: var(--text-muted); font-family: var(--mono); }
+  .explain-val { font-weight: 600; font-family: var(--mono); }
+
+  /* PROGRESS BARS */
+  .prog-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .prog-label { font-size: 12px; color: var(--text-muted); min-width: 100px; }
+  .prog-bar { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+  .prog-val { font-size: 12px; font-weight: 600; min-width: 40px; text-align: right; font-family: var(--mono); }
+
+  /* TRIGGER LOG */
+  .log-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .log-item:last-child { border: none; }
+  .log-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .log-dot-green { background: var(--green); }
+  .log-dot-amber { background: var(--amber); }
+  .log-dot-teal { background: var(--teal); }
+  .log-time { font-family: var(--mono); font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+  .log-text { font-size: 12px; }
+  .log-detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* MODALS */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 500; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 20px; padding: 32px; width: min(540px, 92vw); box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: popIn 0.25s ease; }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .modal .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .mform-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mfield { display: flex; flex-direction: column; gap: 6px; }
+  .mfield.full { grid-column: 1/-1; }
+  .mfield label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); }
+  .mfield input, .mfield select {
+    border: 1.5px solid var(--border); border-radius: 9px;
+    padding: 10px 12px; font-family: var(--sans); font-size: 13px;
+    color: var(--text); outline: none; background: var(--bg);
+    transition: border-color 0.2s;
+  }
+  .mfield input:focus, .mfield select:focus { border-color: var(--teal); background: white; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .btn-cancel { background: var(--bg); border: 1.5px solid var(--border); border-radius: 9px; padding: 10px 18px; font-family: var(--sans); font-size: 13px; cursor: pointer; transition: border-color 0.15s; }
+  .btn-cancel:hover { border-color: var(--teal); color: var(--teal); }
+  .btn-save { background: var(--navy); color: white; border: none; border-radius: 9px; padding: 10px 18px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .btn-save:hover { background: var(--navy3); }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: white; padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; transform: translateY(60px); opacity: 0; transition: all 0.3s; z-index: 9999; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  /* TREND SPARK */
+  .spark { display: inline-flex; gap: 2px; align-items: flex-end; height: 24px; margin-left: 8px; }
+  .spark-bar { width: 4px; border-radius: 2px 2px 0 0; }
+
+  /* SORTABLE HEADERS */
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--teal); }
+
+  @media (max-width: 1024px) {
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .chart-row { grid-template-columns: 1fr; }
+    .db-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .content { margin-left: 0; padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-container">
+    <div class="login-left">
+      <div class="login-brand">
+        <div class="brand-icon">S</div>
+        <div>
+          <div class="brand-name">SellerOS Admin</div>
+          <div class="brand-tag">Management Environment</div>
+        </div>
+      </div>
+      <div class="login-tagline">
+        Full visibility.<br>Total control.
+        <em>One platform.</em>
+      </div>
+      <div class="login-features">
+        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Real-time inventory across all branches & platforms</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Order monitoring with platform & branch drill-down</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">User & role management with DB-level enforcement</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Live trigger logs, query analysis & system insights</span></div>
+      </div>
+    </div>
+    <div class="login-right">
+      <div class="login-head">
+        <div class="login-h1">Admin Sign In</div>
+        <div class="login-p">Elevated access — management level only</div>
+      </div>
+      <div class="lfield"><label>Email</label><input type="email" value="admin@selleros.in" placeholder="admin@company.com"></div>
+      <div class="lfield"><label>Password</label><input type="password" value="••••••••••"></div>
+      <div class="lfield">
+        <label>Access Level</label>
+        <select id="login-level">
+          <option value="admin">Admin</option>
+          <option value="manager">Manager</option>
+        </select>
+      </div>
+      <button class="login-btn" onclick="doLogin()">Access Admin Panel →</button>
+      <div class="login-meta">Restricted — authorized personnel only</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- TOP NAV -->
+  <nav class="topnav">
+    <a class="topnav-brand" href="#">
+      <div class="topnav-icon">S</div>
+      <span class="topnav-name">SellerOS</span>
+      <span class="topnav-env">/ ADMIN</span>
+    </a>
+    <div class="topnav-tabs">
+      <div class="topnav-tab active" onclick="topNavTab(this,'dashboard')">Dashboard</div>
+      <div class="topnav-tab" onclick="topNavTab(this,'inventory')">Inventory</div>
+      <div class="topnav-tab" onclick="topNavTab(this,'orders')">Orders</div>
+      <div class="topnav-tab" onclick="topNavTab(this,'users')">Users</div>
+      <div class="topnav-tab" onclick="topNavTab(this,'insights')">DB Insights</div>
+    </div>
+    <div class="topnav-right">
+      <span class="nav-role-badge" id="nav-role-badge">ADMIN</span>
+      <div class="nav-user">
+        <div class="nav-avatar" id="nav-avatar">AK</div>
+        <span class="nav-username" id="nav-username">Arjun Kumar</span>
+      </div>
+      <span class="logout-link" onclick="doLogout()">⎋ Sign Out</span>
+    </div>
+  </nav>
+
+  <div class="main">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-section">Overview</div>
+      <div class="slink active" data-page="dashboard" onclick="showPage('dashboard')"><span class="slink-icon">◈</span> Dashboard</div>
+      <div class="sidebar-section">Data</div>
+      <div class="slink" data-page="inventory" onclick="showPage('inventory')"><span class="slink-icon">⊞</span> Inventory</div>
+      <div class="slink" data-page="orders" onclick="showPage('orders')"><span class="slink-icon">📋</span> Orders</div>
+      <div class="slink" data-page="delivery" onclick="showPage('delivery')"><span class="slink-icon">🚚</span> Deliveries</div>
+      <div class="sidebar-section">Management</div>
+      <div class="slink" data-page="users" onclick="showPage('users')"><span class="slink-icon">👥</span> Users <span class="slink-badge">12</span></div>
+      <div class="slink" data-page="branches" onclick="showPage('branches')"><span class="slink-icon">🏢</span> Branches</div>
+      <div class="sidebar-section">System</div>
+      <div class="slink" data-page="insights" onclick="showPage('insights')"><span class="slink-icon">⚙</span> DB Insights</div>
+    </aside>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="ph">
+          <div>
+            <div class="ph-title">Command Center</div>
+            <div class="ph-sub">Wednesday, 25 Feb 2026 — System operational across all branches</div>
+          </div>
+          <div class="ph-right">
+            <select class="filter-sel" id="date-range" onchange="refreshDash()">
+              <option>Today</option>
+              <option>This Week</option>
+              <option>This Month</option>
+            </select>
+            <button class="btn-primary" onclick="showToast('Data refreshed ✓')">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="kpi-grid" id="kpi-cards"></div>
+        <div class="chart-row">
+          <div class="chart-card">
+            <div class="card-title">Revenue by Platform</div>
+            <div class="card-sub">Orders value across all platforms — today</div>
+            <div class="bar-chart" id="bar-chart"></div>
+          </div>
+          <div class="list-card">
+            <div class="card-title">Orders by Platform</div>
+            <div class="card-sub">Distribution today</div>
+            <div class="donut-wrap" id="donut-wrap"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="table-card">
+            <div class="table-header">
+              <div class="table-title">Top Branches by Revenue</div>
+            </div>
+            <table>
+              <thead><tr><th>Branch</th><th>Orders</th><th>Revenue</th><th>Status</th></tr></thead>
+              <tbody id="branch-tb"></tbody>
+            </table>
+          </div>
+          <div class="table-card">
+            <div class="table-header"><div class="table-title">Trigger Log (Live)</div></div>
+            <div style="padding:16px 20px" id="trigger-log"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INVENTORY -->
+      <div class="page" id="page-inventory">
+        <div class="ph">
+          <div><div class="ph-title">Inventory Management</div><div class="ph-sub">Full stock view across all branches and platforms</div></div>
+          <div class="ph-right">
+            <button class="btn-outline" onclick="exportTable()">⬇ Export</button>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <div class="search-wrap">
+            <span style="color:var(--text-dim);font-size:14px">⌕</span>
+            <input type="text" placeholder="Search products…" oninput="filterInventory()" id="inv-search">
+          </div>
+          <select class="filter-sel" id="inv-branch" onchange="filterInventory()">
+            <option value="">All Branches</option>
+            <option>Mumbai Central</option>
+            <option>Delhi NCR</option>
+            <option>Bangalore South</option>
+            <option>Chennai</option>
+          </select>
+          <select class="filter-sel" id="inv-cat" onchange="filterInventory()">
+            <option value="">All Categories</option>
+            <option>Electronics</option>
+            <option>Clothing</option>
+            <option>Home & Kitchen</option>
+            <option>Sports</option>
+            <option>Books</option>
+          </select>
+          <select class="filter-sel" id="inv-plat" onchange="filterInventory()">
+            <option value="">All Platforms</option>
+            <option>Amazon</option>
+            <option>Flipkart</option>
+            <option>Own Website</option>
+            <option>Offline</option>
+          </select>
+          <select class="filter-sel" id="inv-stock" onchange="filterInventory()">
+            <option value="">All Stock</option>
+            <option value="in">In Stock</option>
+            <option value="low">Low Stock</option>
+            <option value="out">Out of Stock</option>
+          </select>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Products <span id="inv-count" style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px"></span></div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" onclick="sortInv('name')">Product ↕</th>
+                <th>Category</th>
+                <th>Branch</th>
+                <th>Platforms</th>
+                <th class="sortable" onclick="sortInv('price')">Price ↕</th>
+                <th class="sortable" onclick="sortInv('stock')">Stock ↕</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inv-tb"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ORDERS -->
+      <div class="page" id="page-orders">
+        <div class="ph">
+          <div><div class="ph-title">Order Management</div><div class="ph-sub">Monitor all orders across branches and platforms</div></div>
+          <div class="ph-right">
+            <button class="btn-outline" onclick="exportTable()">⬇ Export CSV</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="order-stats"></div>
+        <div class="filter-bar">
+          <div class="search-wrap">
+            <span style="color:var(--text-dim);font-size:14px">⌕</span>
+            <input type="text" placeholder="Search orders, customers…" oninput="filterOrders()" id="ord-search">
+          </div>
+          <select class="filter-sel" id="ord-plat-f" onchange="filterOrders()">
+            <option value="">All Platforms</option>
+            <option>Amazon</option><option>Flipkart</option><option>Own Website</option><option>Offline</option>
+          </select>
+          <select class="filter-sel" id="ord-branch-f" onchange="filterOrders()">
+            <option value="">All Branches</option>
+            <option>Mumbai Central</option><option>Delhi NCR</option><option>Bangalore South</option><option>Chennai</option>
+          </select>
+          <select class="filter-sel" id="ord-status-f" onchange="filterOrders()">
+            <option value="">All Statuses</option>
+            <option>Pending</option><option>Processing</option><option>Shipped</option><option>Delivered</option>
+          </select>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Orders <span id="ord-count" style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px"></span></div></div>
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th><th>Product</th><th>Customer</th><th>Platform</th><th>Branch</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ord-tb"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DELIVERIES -->
+      <div class="page" id="page-delivery">
+        <div class="ph">
+          <div><div class="ph-title">Delivery Tracking</div><div class="ph-sub">Monitor all deliveries and staff performance</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="del-stats"></div>
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">All Deliveries</div>
+            <div class="filter-bar" style="margin:0;gap:8px">
+              <select class="filter-sel" style="padding:6px 10px;font-size:12px" id="del-status-f" onchange="filterDeliveries()">
+                <option value="">All Statuses</option>
+                <option>Pending</option><option>Picked Up</option><option>Out for Delivery</option><option>Delivered</option>
+              </select>
+              <select class="filter-sel" style="padding:6px 10px;font-size:12px" id="del-branch-f" onchange="filterDeliveries()">
+                <option value="">All Branches</option>
+                <option>Mumbai Central</option><option>Delhi NCR</option>
+              </select>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Delivery ID</th><th>Order</th><th>Customer</th><th>Product</th><th>Branch</th><th>Staff</th><th>Status</th><th>Updated</th></tr></thead>
+            <tbody id="del-tb"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="page" id="page-users">
+        <div class="ph">
+          <div><div class="ph-title">User & Role Management</div><div class="ph-sub">Manage system users, roles, and branch assignments</div></div>
+          <div class="ph-right">
+            <button class="btn-primary" onclick="openUserModal()">+ Add User</button>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <div class="search-wrap">
+            <span style="color:var(--text-dim);font-size:14px">⌕</span>
+            <input type="text" placeholder="Search users…">
+          </div>
+          <select class="filter-sel" id="user-role-f">
+            <option value="">All Roles</option>
+            <option>Admin</option><option>Manager</option><option>Seller</option><option>Viewer</option><option>Delivery</option>
+          </select>
+          <select class="filter-sel">
+            <option>All Branches</option>
+            <option>Mumbai Central</option><option>Delhi NCR</option><option>Bangalore South</option><option>Chennai</option>
+          </select>
+        </div>
+        <div class="user-grid" id="user-grid"></div>
+      </div>
+
+      <!-- BRANCHES -->
+      <div class="page" id="page-branches">
+        <div class="ph">
+          <div><div class="ph-title">Branch Overview</div><div class="ph-sub">All operational branches and their performance</div></div>
+          <div class="ph-right"><button class="btn-primary" onclick="showToast('Branch created')">+ Add Branch</button></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px" id="branch-grid"></div>
+      </div>
+
+      <!-- DB INSIGHTS -->
+      <div class="page" id="page-insights">
+        <div class="ph">
+          <div><div class="ph-title">Database Insights</div><div class="ph-sub">Read-only analytics, query reference, and system health</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px" id="db-health"></div>
+        <div class="db-grid" id="db-grid"></div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- USER MODAL -->
+<div class="modal-overlay" id="user-modal">
+  <div class="modal">
+    <h2>Add New User</h2>
+    <div class="modal-sub">Create account and assign role & branch</div>
+    <div class="mform-row">
+      <div class="mfield"><label>Full Name</label><input placeholder="Ananya Sharma"></div>
+      <div class="mfield"><label>Username</label><input placeholder="ananya.s"></div>
+      <div class="mfield full"><label>Email</label><input type="email" placeholder="ananya@selleros.in"></div>
+      <div class="mfield"><label>Role</label>
+        <select><option>Seller</option><option>Viewer</option><option>Delivery</option><option>Manager</option><option>Admin</option></select>
+      </div>
+      <div class="mfield"><label>Branch</label>
+        <select><option>Mumbai Central</option><option>Delhi NCR</option><option>Bangalore South</option><option>Chennai</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+//  SellerOS — Admin Environment
+//  All data fetched live from the Node.js/Express API
+// ============================================================
+
+const API_BASE = "http://localhost:3001/api";
+
+let currentUser  = null;
+let currentLevel = "admin";
+let allPlatforms = [];
+let allBranches  = [];
+let allCategories= [];
+let invSortKey   = "";
+let invSortDir   = 1;
+let invData      = [];   // cached for client-side sort
+
+async function api(path, opts = {}) {
+    const res = await fetch(API_BASE + path, {
+        headers: { "Content-Type": "application/json" },
+        ...opts,
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || res.statusText);
+    }
+    return res.json();
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+async function doLogin() {
+    const email    = document.querySelector(".login-right input[type=email]")?.value?.trim();
+    const password = document.querySelector(".login-right input[type=password]")?.value;
+    const level    = document.getElementById("login-level")?.value || "admin";
+
+    // Derive username from email prefix for the demo seed data
+    const username = email?.split("@")[0] || "arjun";
+
+    try {
+        const data = await api("/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ username, password: level === "admin" ? "admin123" : "manager123" }),
+        });
+        currentUser  = data.user;
+        currentLevel = data.user.role.toLowerCase();
+
+        if (!["admin","manager"].includes(currentLevel)) {
+            showToast("This portal is for Admin/Manager roles only.");
+            return;
+        }
+
+        document.getElementById("login-screen").classList.add("hidden");
+        setTimeout(() => {
+            document.getElementById("app").classList.add("show");
+            initAdmin();
+        }, 500);
+    } catch (e) { showToast("❌ " + e.message); }
+}
+
+function doLogout() {
+    currentUser = null;
+    document.getElementById("app").classList.remove("show");
+    document.getElementById("login-screen").classList.remove("hidden");
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+async function initAdmin() {
+    const initials = currentUser.name.split(" ").map(w=>w[0]).join("").slice(0,2);
+    document.getElementById("nav-username").textContent   = currentUser.name;
+    document.getElementById("nav-avatar").textContent     = initials;
+    document.getElementById("nav-role-badge").textContent = currentUser.role.toUpperCase();
+
+    // Load reference data in parallel
+    [allPlatforms, allBranches, allCategories] = await Promise.all([
+        api("/platforms").catch(() => []),
+        api("/branches").catch(() => []),
+        api("/categories").catch(() => []),
+    ]);
+
+    await buildDashboard();
+    showPage("dashboard");
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────
+function showPage(id) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".slink").forEach(l =>
+        l.classList.toggle("active", l.dataset.page === id)
+    );
+    const p = document.getElementById("page-" + id);
+    if (p) p.classList.add("active");
+
+    if (id === "inventory")  buildInventory();
+    if (id === "orders")     buildOrders();
+    if (id === "delivery")   buildDeliveries();
+    if (id === "users")      buildUsers();
+    if (id === "branches")   buildBranches();
+    if (id === "insights")   buildInsights();
+}
+
+function topNavTab(el, page) {
+    document.querySelectorAll(".topnav-tab").forEach(t => t.classList.remove("active"));
+    el.classList.add("active");
+    showPage(page);
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+async function buildDashboard() {
+    const [kpis, platformRev, branchRev, logs] = await Promise.all([
+        api("/dashboard/kpis").catch(() => ({})),
+        api("/dashboard/platform-revenue").catch(() => []),
+        api("/dashboard/branch-revenue").catch(() => []),
+        api("/trigger-logs?limit=6").catch(() => []),
+    ]);
+
+    // KPI cards
+    document.getElementById("kpi-cards").innerHTML = [
+        { label:"Total Revenue Today",  value: kpis.revenue ? "₹" + Number(kpis.revenue).toLocaleString("en-IN") : "₹0", delta:"Today total", dir:"up",     icon:"💰", color:"#0d8a8a" },
+        { label:"Orders Today",         value: kpis.orders  ?? 0,    delta:"All platforms",  dir:"up",     icon:"📋", color:"#2563eb" },
+        { label:"Active Products",      value: kpis.products ?? 0,   delta:`${kpis.out_of_stock ?? 0} out of stock`, dir: kpis.out_of_stock > 0 ? "down":"neutral", icon:"📦", color:"#7c3aed" },
+        { label:"Deliveries In Transit",value: kpis.in_transit ?? 0, delta:"Across all branches", dir:"neutral", icon:"🚚", color:"#d97706" },
+    ].map(k => `
+        <div class="kpi-card">
+            <div class="kpi-accent" style="background:${k.color}"></div>
+            <div class="kpi-icon" style="background:${k.color}18">${k.icon}</div>
+            <div class="kpi-label">${k.label}</div>
+            <div class="kpi-value">${k.value}</div>
+            <div class="kpi-footer kpi-${k.dir}">${k.delta}</div>
+        </div>`).join("");
+
+    // Bar chart — platform revenue
+    const maxRev = Math.max(...platformRev.map(p => Number(p.revenue) || 0), 1);
+    const BAR_COLORS = ["#0d8a8a","#2563eb","#7c3aed","#d97706"];
+    document.getElementById("bar-chart").innerHTML = platformRev.map((p, i) => `
+        <div class="bar-group">
+            <div class="bar-wrap">
+                <div class="bar" style="height:${Math.max(4, Number(p.revenue)/maxRev*100)}%;background:${BAR_COLORS[i%4]};width:24px"
+                     title="₹${Number(p.revenue).toLocaleString('en-IN')}"></div>
+            </div>
+            <div class="bar-label">${p.platform}</div>
+        </div>`).join("") +
+        `<div style="display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding-bottom:20px;margin-left:8px">
+            <div style="font-size:10px;color:var(--text-muted)">Hover bars for value</div>
+        </div>`;
+
+    // Donut — platform order share
+    const totalOrders = platformRev.reduce((s,p) => s + Number(p.order_count), 0) || 1;
+    const r = 50, cx = 60, cy = 60, stroke = 20;
+    let offset = 0;
+    const circles = platformRev.map((p, i) => {
+        const pct      = Number(p.order_count) / totalOrders;
+        const dashLen  = 2 * Math.PI * r * pct;
+        const gap      = 2 * Math.PI * r - dashLen;
+        const el       = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${BAR_COLORS[i%4]}" stroke-width="${stroke}" stroke-dasharray="${dashLen} ${gap}" stroke-dashoffset="${-offset}" />`;
+        offset += dashLen;
+        return el;
+    }).join("");
+    document.getElementById("donut-wrap").innerHTML = `
+        <svg width="120" height="120" viewBox="0 0 120 120" class="donut">${circles}</svg>
+        <div class="donut-legend">${platformRev.map((p,i) => `
+            <div class="legend-item">
+                <div class="legend-dot" style="background:${BAR_COLORS[i%4]}"></div>
+                <span class="legend-label">${p.platform}</span>
+                <span class="legend-val">${Math.round(Number(p.order_count)/totalOrders*100)}%</span>
+            </div>`).join("")}
+        </div>`;
+
+    // Branch revenue table
+    document.getElementById("branch-tb").innerHTML = branchRev.map(b => `
+        <tr>
+            <td>${b.branch}</td>
+            <td style="font-family:var(--mono);font-weight:600">${b.order_count}</td>
+            <td style="font-weight:700;color:var(--green)">₹${Number(b.revenue).toLocaleString("en-IN")}</td>
+            <td><span class="tag tag-green">Operational</span></td>
+        </tr>`).join("");
+
+    // Trigger log
+    const dotMap = { inv_update_on_order:"green", order_status_change:"teal", delivery_status_change:"amber" };
+    document.getElementById("trigger-log").innerHTML = logs.length
+        ? logs.map(l => `
+            <div class="log-item">
+                <div class="log-dot log-dot-${dotMap[l.event_type] || "teal"}"></div>
+                <div>
+                    <div class="log-time">${new Date(l.logged_at).toLocaleTimeString("en-IN", {hour12:false})}</div>
+                    <div class="log-text">${l.event_type}</div>
+                    <div class="log-detail">${l.description}</div>
+                </div>
+            </div>`).join("")
+        : `<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:13px">No trigger events yet</div>`;
+}
+
+function refreshDash() { buildDashboard(); showToast("Dashboard refreshed"); }
+
+// ── INVENTORY ─────────────────────────────────────────────────
+async function buildInventory() {
+    await fetchAndRenderInventory();
+}
+
+async function fetchAndRenderInventory() {
+    const search   = document.getElementById("inv-search")?.value || "";
+    const branchName = document.getElementById("inv-branch")?.value || "";
+    const catName  = document.getElementById("inv-cat")?.value || "";
+    const platName = document.getElementById("inv-plat")?.value || "";
+    const stockF   = document.getElementById("inv-stock")?.value || "";
+
+    const branchObj = allBranches.find(b => b.name === branchName);
+    const catObj    = allCategories.find(c => c.name === catName);
+    const platObj   = allPlatforms.find(p => p.name === platName);
+
+    const params = new URLSearchParams();
+    if (branchObj) params.set("branch_id",   branchObj.id);
+    if (catObj)    params.set("category_id", catObj.id);
+    if (platObj)   params.set("platform_id", platObj.id);
+    if (search)    params.set("search", search);
+    if (stockF)    params.set("stock", stockF);
+
+    try {
+        invData = await api("/inventory?" + params.toString());
+
+        // Client-side sort
+        if (invSortKey) invData.sort((a,b) => {
+            const av = invSortKey === "name" ? a.name : invSortKey === "price" ? a.sell_price : a.stock;
+            const bv = invSortKey === "name" ? b.name : invSortKey === "price" ? b.sell_price : b.stock;
+            return typeof av === "string" ? av.localeCompare(bv)*invSortDir : (av-bv)*invSortDir;
+        });
+
+        document.getElementById("inv-count").textContent = `(${invData.length} records)`;
+        document.getElementById("inv-tb").innerHTML = invData.map(p => {
+            const [sc, sl] = p.stock === 0 ? ["tag-red","Out of Stock"]
+                           : p.stock <= 8  ? ["tag-amber","Low Stock"]
+                           : ["tag-green","In Stock"];
+            return `<tr>
+                <td>${p.emoji} <strong>${p.name}</strong></td>
+                <td><span class="tag tag-navy">${p.category}</span></td>
+                <td>${p.branch}</td>
+                <td style="font-size:11px;color:var(--text-muted)">${p.platform}</td>
+                <td style="font-family:var(--mono);font-weight:600">₹${Number(p.sell_price).toLocaleString("en-IN")}</td>
+                <td style="font-family:var(--mono);font-weight:700;${p.stock===0?"color:var(--red)":p.stock<=8?"color:var(--amber)":""}">${p.stock}</td>
+                <td><span class="tag ${sc}">${sl}</span></td>
+                <td><button class="btn-sm" onclick="showToast('Edit: ${p.name}')">Edit</button></td>
+            </tr>`;
+        }).join("");
+    } catch (e) {
+        document.getElementById("inv-tb").innerHTML =
+            `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px">Error: ${e.message}</td></tr>`;
+    }
+}
+
+function filterInventory() { fetchAndRenderInventory(); }
+
+function sortInv(key) {
+    if (invSortKey === key) invSortDir *= -1;
+    else { invSortKey = key; invSortDir = 1; }
+    fetchAndRenderInventory();
+}
+
+// ── ORDERS ────────────────────────────────────────────────────
+async function buildOrders() {
+    // Status summary
+    try {
+        const statusData = await api("/dashboard/order-status-counts");
+        const counts = {};
+        statusData.forEach(s => counts[s.status] = s.count);
+        document.getElementById("order-stats").innerHTML = [
+            { label:"Pending",    val: counts.Pending    || 0, color:"var(--amber)", bg:"var(--amber-light)" },
+            { label:"Processing", val: counts.Processing || 0, color:"var(--blue)",  bg:"var(--blue-light)" },
+            { label:"Shipped",    val: counts.Shipped    || 0, color:"var(--teal)",  bg:"var(--teal-light)" },
+            { label:"Delivered",  val: counts.Delivered  || 0, color:"var(--green)", bg:"var(--green-light)" },
+        ].map(s => `
+            <div style="background:${s.bg};border-radius:12px;padding:16px 20px">
+                <div style="font-size:11px;font-weight:600;color:${s.color};font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">${s.label}</div>
+                <div style="font-size:28px;font-weight:700;color:${s.color};letter-spacing:-0.5px;margin-top:6px">${s.val}</div>
+            </div>`).join("");
+    } catch(e) { /* non-critical */ }
+    await fetchAndRenderOrders();
+}
+
+async function fetchAndRenderOrders() {
+    const search     = document.getElementById("ord-search")?.value || "";
+    const platName   = document.getElementById("ord-plat-f")?.value || "";
+    const branchName = document.getElementById("ord-branch-f")?.value || "";
+    const status     = document.getElementById("ord-status-f")?.value || "";
+
+    const platObj   = allPlatforms.find(p => p.name === platName);
+    const branchObj = allBranches.find(b => b.name === branchName);
+
+    const params = new URLSearchParams();
+    if (search)     params.set("search", search);
+    if (platObj)    params.set("platform_id", platObj.id);
+    if (branchObj)  params.set("branch_id", branchObj.id);
+    if (status)     params.set("status", status);
+
+    try {
+        const orders = await api("/orders?" + params.toString());
+        document.getElementById("ord-count").textContent = `(${orders.length} orders)`;
+        const smap = { Shipped:"blue", Processing:"amber", Delivered:"green", Pending:"amber", Cancelled:"red" };
+        document.getElementById("ord-tb").innerHTML = orders.map(o => `
+            <tr>
+                <td style="font-family:var(--mono);font-size:12px;color:var(--teal)">${o.order_ref}</td>
+                <td>${o.product_name}</td>
+                <td>${o.customer_name}</td>
+                <td><span class="tag tag-navy">${o.platform_name}</span></td>
+                <td style="font-size:12px;color:var(--text-muted)">${o.branch_name}</td>
+                <td style="font-family:var(--mono);font-weight:700">₹${Number(o.total_amount).toLocaleString("en-IN")}</td>
+                <td><span class="tag tag-${smap[o.status] || "amber"}">${o.status}</span></td>
+                <td style="font-size:12px;color:var(--text-muted);font-family:var(--mono)">${new Date(o.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</td>
+                <td>
+                    <select style="background:var(--bg);border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;cursor:pointer"
+                        onchange="updateOrderStatus(${o.id}, this.value)">
+                        ${["Pending","Processing","Shipped","Delivered","Cancelled"].map(s=>
+                            `<option ${s===o.status?"selected":""}>${s}</option>`).join("")}
+                    </select>
+                </td>
+            </tr>`).join("");
+    } catch (e) {
+        document.getElementById("ord-tb").innerHTML =
+            `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:20px">Error: ${e.message}</td></tr>`;
+    }
+}
+
+async function updateOrderStatus(id, status) {
+    try {
+        await api(`/orders/${id}/status`, { method:"PATCH", body: JSON.stringify({ status }) });
+        showToast(`Order status → ${status}`);
+    } catch (e) { showToast("❌ " + e.message); }
+}
+
+function filterOrders() { fetchAndRenderOrders(); }
+
+// ── DELIVERIES ────────────────────────────────────────────────
+async function buildDeliveries() {
+    try {
+        const statusData = await api("/dashboard/order-status-counts");
+        const allDel = await api("/deliveries");
+        const counts = {};
+        allDel.forEach(d => counts[d.status] = (counts[d.status]||0)+1);
+
+        document.getElementById("del-stats").innerHTML = [
+            { label:"Pending",          val: counts["Pending"]||0,            color:"var(--amber)", bg:"var(--amber-light)" },
+            { label:"Picked Up",        val: counts["Picked Up"]||0,          color:"var(--blue)",  bg:"var(--blue-light)"  },
+            { label:"Out for Delivery", val: counts["Out for Delivery"]||0,   color:"var(--teal)",  bg:"var(--teal-light)"  },
+            { label:"Delivered",        val: counts["Delivered"]||0,          color:"var(--green)", bg:"var(--green-light)" },
+        ].map(s => `
+            <div style="background:${s.bg};border-radius:12px;padding:16px 20px">
+                <div style="font-size:11px;font-weight:600;color:${s.color};font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">${s.label}</div>
+                <div style="font-size:28px;font-weight:700;color:${s.color};letter-spacing:-0.5px;margin-top:6px">${s.val}</div>
+            </div>`).join("");
+
+        await fetchAndRenderDeliveries(allDel);
+    } catch (e) {
+        document.getElementById("del-tb").innerHTML =
+            `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px">Error: ${e.message}</td></tr>`;
+    }
+}
+
+async function fetchAndRenderDeliveries(preloaded) {
+    const status = document.getElementById("del-status-f")?.value || "";
+    const branchName = document.getElementById("del-branch-f")?.value || "";
+    const branchObj  = allBranches.find(b => b.name === branchName);
+
+    const params = new URLSearchParams();
+    if (status)    params.set("status", status);
+    if (branchObj) params.set("branch_id", branchObj.id);
+
+    try {
+        const deliveries = preloaded || await api("/deliveries?" + params.toString());
+        const filtered   = deliveries.filter(d =>
+            (!status || d.status === status) &&
+            (!branchObj || d.branch_name === branchName)
+        );
+        const smap = { Delivered:"green", "Out for Delivery":"teal", "Picked Up":"blue", Pending:"amber" };
+        document.getElementById("del-tb").innerHTML = filtered.map(d => `
+            <tr>
+                <td style="font-family:var(--mono);color:var(--teal);font-size:12px">${d.delivery_ref}</td>
+                <td style="font-family:var(--mono);font-size:12px">${d.order_ref}</td>
+                <td>${d.customer_name}</td>
+                <td>${d.product_name}</td>
+                <td style="font-size:12px;color:var(--text-muted)">${d.branch_name}</td>
+                <td>${d.staff_name}</td>
+                <td><span class="tag tag-${smap[d.status] || "amber"}">${d.status}</span></td>
+                <td style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">${new Date(d.updated_at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})}</td>
+            </tr>`).join("");
+    } catch (e) { /* handled above */ }
+}
+
+function filterDeliveries() { fetchAndRenderDeliveries(null); }
+
+// ── USERS ─────────────────────────────────────────────────────
+async function buildUsers() {
+    try {
+        const users = await api("/users");
+        const roleTag = { Admin:"tag-navy", Manager:"tag-teal", Seller:"tag-blue", Viewer:"tag-purple", Delivery:"tag-amber" };
+        const roleColor = { Admin:"#0f1b2d", Manager:"#0d8a8a", Seller:"#2563eb", Viewer:"#7c3aed", Delivery:"#d97706" };
+        document.getElementById("user-grid").innerHTML = users.map((u, i) => {
+            const initials = u.name.split(" ").map(w=>w[0]).join("").slice(0,2);
+            return `
+                <div class="user-card">
+                    <div class="user-card-top">
+                        <div class="uavatar" style="background:${roleColor[u.role] || "#64748b"}">${initials}</div>
+                        <div>
+                            <div class="uname">${u.name}</div>
+                            <div class="uemail">${u.email}</div>
+                        </div>
+                    </div>
+                    <div class="user-card-meta">
+                        <span class="tag ${roleTag[u.role] || "tag-navy"}">${u.role}</span>
+                        <span class="tag tag-navy" style="font-size:10px">${u.branch || "All Branches"}</span>
+                        <span class="tag ${u.is_active ? "tag-green":"tag-red"}">${u.is_active ? "Active":"Inactive"}</span>
+                    </div>
+                    <div class="user-card-actions">
+                        <button class="btn-sm" onclick="showToast('Editing ${u.name}')">Edit</button>
+                        <button class="btn-sm" onclick="toggleUser(${u.id}, ${!u.is_active})">${u.is_active ? "Deactivate":"Activate"}</button>
+                        ${currentLevel === "admin" ? `<button class="btn-sm" onclick="showToast('Reassign: ${u.name}')">Role</button>` : ""}
+                    </div>
+                </div>`;
+        }).join("");
+    } catch (e) {
+        document.getElementById("user-grid").innerHTML =
+            `<div style="color:var(--red);padding:20px">Error: ${e.message}</div>`;
+    }
+}
+
+async function toggleUser(id, is_active) {
+    try {
+        await api(`/users/${id}/active`, { method:"PATCH", body: JSON.stringify({ is_active }) });
+        showToast(`User ${is_active ? "activated":"deactivated"}`);
+        buildUsers();
+    } catch (e) { showToast("❌ " + e.message); }
+}
+
+// ── BRANCHES ──────────────────────────────────────────────────
+async function buildBranches() {
+    try {
+        const branches = await api("/branches");
+        const COLORS = ["#0d8a8a","#2563eb","#7c3aed","#059669"];
+        document.getElementById("branch-grid").innerHTML = branches.map((b,i) => `
+            <div style="background:white;border:1px solid var(--border);border-radius:16px;overflow:hidden">
+                <div style="background:${COLORS[i%4]};padding:20px 24px;color:white">
+                    <div style="font-size:18px;font-weight:700">${b.name}</div>
+                    <div style="font-size:13px;opacity:0.75;margin-top:4px">${b.city}, ${b.state}</div>
+                </div>
+                <div style="padding:20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <div><div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">Orders</div>
+                        <div style="font-size:24px;font-weight:700;margin-top:4px">${b.total_orders}</div></div>
+                    <div><div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">Revenue</div>
+                        <div style="font-size:24px;font-weight:700;margin-top:4px;color:var(--green)">₹${Number(b.total_revenue).toLocaleString("en-IN")}</div></div>
+                    <div><div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">Staff</div>
+                        <div style="font-size:20px;font-weight:600;margin-top:4px">${b.staff_count}</div></div>
+                    <div><div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">Stock Units</div>
+                        <div style="font-size:20px;font-weight:600;margin-top:4px">${b.total_stock}</div></div>
+                </div>
+                <div style="padding:0 24px 20px;display:flex;gap:8px">
+                    <button class="btn-sm" onclick="showToast('Viewing ${b.name}')">View Details</button>
+                    <button class="btn-sm" onclick="showToast('Managing ${b.name}')">Manage Staff</button>
+                </div>
+            </div>`).join("");
+    } catch (e) {
+        document.getElementById("branch-grid").innerHTML =
+            `<div style="color:var(--red);padding:20px">Error: ${e.message}</div>`;
+    }
+}
+
+// ── DB INSIGHTS ───────────────────────────────────────────────
+async function buildInsights() {
+    const [health, logs] = await Promise.all([
+        api("/health").catch(() => ({ status:"error", db:"disconnected" })),
+        api("/trigger-logs?limit=10").catch(() => []),
+    ]);
+
+    document.getElementById("db-health").innerHTML = [
+        { label:"DB Connection",        value: health.db === "connected" ? "Connected ✓" : "Error ✗", color: health.db === "connected" ? "var(--green)":"var(--red)", icon:"🔌" },
+        { label:"Triggers Fired Today", value: logs.length + "+",  color:"var(--teal)", icon:"⚙" },
+        { label:"Last Ping",            value: health.timestamp ? new Date(health.timestamp).toLocaleTimeString("en-IN",{hour12:false}) : "—", color:"var(--blue)", icon:"⏱" },
+    ].map(h => `
+        <div style="background:white;border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px">
+            <div style="width:44px;height:44px;border-radius:11px;background:${h.color}18;display:flex;align-items:center;justify-content:center;font-size:20px">${h.icon}</div>
+            <div>
+                <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">${h.label}</div>
+                <div style="font-size:20px;font-weight:700;color:${h.color};letter-spacing:-0.3px">${h.value}</div>
+            </div>
+        </div>`).join("");
+
+    const queries = [
+        {
+            title: "Trigger: trg_inv_deduct_on_order",
+            desc: "Fires AFTER INSERT on orders — auto-deducts stock",
+            sql: `<span class="sql-comment">-- Runs automatically in MySQL on every order</span>\nCREATE TRIGGER trg_inv_deduct_on_order\n<span class="sql-keyword">AFTER INSERT ON</span> orders\n<span class="sql-keyword">FOR EACH ROW BEGIN</span>\n  <span class="sql-keyword">UPDATE</span> inventory\n  <span class="sql-keyword">SET</span>    stock = stock - NEW.qty\n  <span class="sql-keyword">WHERE</span>  product_id  = NEW.product_id\n    <span class="sql-keyword">AND</span>  branch_id   = NEW.branch_id\n    <span class="sql-keyword">AND</span>  platform_id = NEW.platform_id;\n<span class="sql-keyword">END</span>;`,
+            explain: [{ k:"Type", v:"AFTER INSERT"}, {k:"Table","v":"orders → inventory"},{k:"Auto-logged",v:"trigger_logs"}]
+        },
+        {
+            title: "Order Transaction (ACID)",
+            desc: "Atomic order placement — rolls back on stock failure",
+            sql: `<span class="sql-comment">-- START TRANSACTION wraps all 3 steps</span>\n<span class="sql-keyword">START TRANSACTION</span>;\n  <span class="sql-comment">-- 1. Check stock availability</span>\n  <span class="sql-keyword">SELECT</span> stock <span class="sql-keyword">FROM</span> inventory\n  <span class="sql-keyword">WHERE</span>  product_id=? <span class="sql-keyword">AND</span> branch_id=?;\n  <span class="sql-comment">-- 2. Insert order (trigger fires here)</span>\n  <span class="sql-keyword">INSERT INTO</span> orders (...) <span class="sql-keyword">VALUES</span> (...);\n  <span class="sql-comment">-- 3. Commit or rollback</span>\n<span class="sql-keyword">COMMIT</span>; <span class="sql-comment">-- or ROLLBACK on error</span>`,
+            explain: [{k:"Isolation", v:"READ COMMITTED"},{k:"Rollback on", v:"stock < qty"},{k:"Trigger fired",v:"trg_inv_deduct"}]
+        },
+        {
+            title: "Platform Revenue (JOIN + GROUP BY)",
+            desc: "Live query backing the platform revenue chart",
+            sql: `<span class="sql-keyword">SELECT</span>  pl.name AS platform,\n        <span class="sql-keyword">COUNT</span>(o.id)       AS orders,\n        <span class="sql-keyword">SUM</span>(o.total_amount) AS revenue\n<span class="sql-keyword">FROM</span>    platforms pl\n<span class="sql-keyword">LEFT JOIN</span> orders o\n  <span class="sql-keyword">ON</span> o.platform_id = pl.id\n  <span class="sql-keyword">AND</span> DATE(o.created_at) = CURDATE()\n<span class="sql-keyword">GROUP BY</span> pl.id\n<span class="sql-keyword">ORDER BY</span> revenue <span class="sql-keyword">DESC</span>;`,
+            explain: [{k:"Query type", v:"SELECT + LEFT JOIN"},{k:"Index used", v:"idx_orders_platform"},{k:"API route",v:"GET /dashboard/platform-revenue"}]
+        },
+        {
+            title: "Role-Based Permissions (RBAC)",
+            desc: "Resolves user capabilities on login",
+            sql: `<span class="sql-keyword">SELECT</span>  u.username, r.name AS role,\n        rp.can_view,   rp.can_insert,\n        rp.can_update, rp.can_delete\n<span class="sql-keyword">FROM</span>    users u\n<span class="sql-keyword">JOIN</span>    roles r\n  <span class="sql-keyword">ON</span> u.role_id = r.id\n<span class="sql-keyword">JOIN</span>    role_permissions rp\n  <span class="sql-keyword">ON</span> r.id = rp.role_id\n<span class="sql-keyword">WHERE</span>   u.username = <span class="sql-string">:username</span>\n  <span class="sql-keyword">AND</span>   u.password = <span class="sql-string">:password</span>;`,
+            explain: [{k:"Tables joined", v:"users + roles + perms"},{k:"Returns",v:"4 permission flags"},{k:"API route",v:"POST /auth/login"}]
+        },
+    ];
+
+    document.getElementById("db-grid").innerHTML = queries.map(q => `
+        <div class="query-card">
+            <div class="qcard-header">
+                <div>
+                    <div class="qcard-title">${q.title}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${q.desc}</div>
+                </div>
+                <button class="btn-sm" onclick="showToast('Copied!')">Copy</button>
+            </div>
+            <div class="qcard-body">
+                <pre class="sql">${q.sql}</pre>
+                <div style="margin-top:14px">
+                    ${q.explain.map(e => `
+                        <div class="explain-row">
+                            <span class="explain-key">${e.k}</span>
+                            <span class="explain-val">${e.v}</span>
+                        </div>`).join("")}
+                </div>
+            </div>
+        </div>`).join("");
+}
+
+// ── MODAL & TOAST ─────────────────────────────────────────────
+function openUserModal() { document.getElementById("user-modal").classList.add("open"); }
+function closeModal()    { document.getElementById("user-modal").classList.remove("open"); }
+
+async function saveUser() {
+    const fields  = document.querySelectorAll("#user-modal .mfield input, #user-modal .mfield select");
+    const name     = fields[0]?.value?.trim();
+    const username = fields[1]?.value?.trim();
+    const email    = fields[2]?.value?.trim();
+    const roleName = fields[3]?.value;
+    const branchName = fields[4]?.value;
+
+    const roleMap  = { Admin:1, Manager:2, Seller:3, Viewer:4, Delivery:5 };
+    const branchObj = allBranches.find(b => b.name === branchName);
+
+    if (!name || !username || !email) { showToast("Fill in all required fields"); return; }
+
+    try {
+        await api("/users", {
+            method: "POST",
+            body: JSON.stringify({
+                name, username, email, password: "welcome123",
+                role_id: roleMap[roleName] || 3,
+                branch_id: branchObj?.id || null,
+            }),
+        });
+        closeModal();
+        showToast(`✓ ${name} added successfully`);
+        buildUsers();
+    } catch (e) { showToast("❌ " + e.message); }
+}
+
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+function exportTable() { showToast("Exporting to CSV…"); }
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+</script>
+</body>
+</html>

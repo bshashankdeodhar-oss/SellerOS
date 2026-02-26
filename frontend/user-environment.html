@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SellerOS — User Environment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0f13;
+    --surface: #141820;
+    --surface2: #1c2230;
+    --border: #232b3a;
+    --teal: #00d4b4;
+    --teal-dim: #00a88e;
+    --teal-glow: rgba(0, 212, 180, 0.12);
+    --amber: #f5a623;
+    --red: #ff5b6b;
+    --blue: #4d9fff;
+    --green: #4ade80;
+    --text: #e8edf5;
+    --text-muted: #6b7a96;
+    --text-dim: #3d4d66;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.4;
+  }
+
+  /* LOGIN SCREEN */
+  #login-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  #login-screen.hidden { opacity: 0; transform: scale(1.04); pointer-events: none; }
+
+  .login-wrap {
+    display: flex;
+    width: min(900px, 96vw);
+    min-height: 520px;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    animation: slideUp 0.7s ease both;
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform: translateY(30px); }
+    to { opacity:1; transform: translateY(0); }
+  }
+
+  .login-art {
+    flex: 1;
+    background: linear-gradient(145deg, #0d2038 0%, #0a3040 40%, #062030 100%);
+    padding: 48px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; overflow: hidden;
+  }
+  .login-art::before {
+    content: '';
+    position: absolute; top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(0,212,180,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .login-art::after {
+    content: '';
+    position: absolute; bottom: -40px; left: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(77,159,255,0.1) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .art-logo { font-size: 22px; font-weight: 600; color: var(--teal); letter-spacing: -0.5px; }
+  .art-logo span { color: var(--text-muted); font-weight: 300; }
+  .art-headline { font-size: 32px; font-weight: 600; line-height: 1.25; color: var(--text); }
+  .art-headline em { color: var(--teal); font-style: normal; }
+  .art-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .art-badge {
+    padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;
+    background: rgba(255,255,255,0.07); color: var(--text-muted);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .login-form-pane {
+    width: 380px;
+    background: var(--surface);
+    padding: 48px 40px;
+    display: flex; flex-direction: column; justify-content: center; gap: 24px;
+  }
+  .login-title { font-size: 22px; font-weight: 600; }
+  .login-sub { font-size: 13px; color: var(--text-muted); margin-top: -16px; }
+
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .field input, .field select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: var(--sans); font-size: 14px;
+    color: var(--text);
+    outline: none; width: 100%;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--teal); }
+  .field select option { background: var(--surface); }
+
+  .btn-primary {
+    background: var(--teal);
+    color: #000;
+    border: none; border-radius: 8px;
+    padding: 13px 20px; font-size: 14px; font-weight: 600;
+    cursor: pointer; width: 100%;
+    transition: background 0.2s, transform 0.1s;
+    font-family: var(--sans);
+  }
+  .btn-primary:hover { background: var(--teal-dim); }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .role-hint { font-size: 11px; color: var(--text-dim); text-align: center; font-family: var(--mono); }
+
+  /* MAIN APP */
+  #app { display: none; min-height: 100vh; }
+  #app.visible { display: flex; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px; min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: fixed; left: 0; top: 0; bottom: 0;
+    z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 16px; font-weight: 600; color: var(--teal);
+    letter-spacing: -0.3px;
+  }
+  .sidebar-logo span { color: var(--text-muted); font-weight: 300; }
+  .sidebar-user {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .user-avatar {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--teal), var(--blue));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #000;
+    margin-bottom: 8px;
+  }
+  .user-name { font-size: 13px; font-weight: 600; }
+  .user-role {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--teal); font-family: var(--mono);
+    background: var(--teal-glow); padding: 2px 8px; border-radius: 4px;
+    display: inline-block; margin-top: 3px;
+  }
+
+  .nav { padding: 16px 12px; flex: 1; }
+  .nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); padding: 0 8px; margin-bottom: 8px; margin-top: 16px; font-family: var(--mono); }
+  .nav-section:first-child { margin-top: 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--teal-glow); color: var(--teal); }
+  .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--amber); color: #000; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; font-family: var(--mono); }
+
+  .sidebar-bottom { padding: 16px 12px; border-top: 1px solid var(--border); }
+  .logout-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 8px;
+    font-size: 13px; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s; background: none; border: none; width: 100%;
+    font-family: var(--sans);
+  }
+  .logout-btn:hover { background: rgba(255,91,107,0.1); color: var(--red); }
+
+  /* CONTENT */
+  .content { margin-left: 220px; flex: 1; padding: 32px; }
+
+  /* PAGE SECTIONS */
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .page-title { font-size: 22px; font-weight: 600; }
+  .page-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .branch-tag {
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 8px; font-size: 12px; font-family: var(--mono);
+    color: var(--text-muted);
+  }
+  .branch-tag strong { color: var(--text); }
+
+  /* STAT CARDS */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .stat-card:hover { border-color: var(--teal); transform: translateY(-1px); }
+  .stat-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--teal); opacity: 0; transition: opacity 0.2s;
+  }
+  .stat-card:hover::after { opacity: 1; }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-family: var(--mono); }
+  .stat-value { font-size: 32px; font-weight: 600; margin: 8px 0 4px; letter-spacing: -1px; }
+  .stat-delta { font-size: 12px; }
+  .stat-delta.up { color: var(--green); }
+  .stat-delta.down { color: var(--red); }
+  .stat-delta.neutral { color: var(--text-muted); }
+  .stat-icon { position: absolute; right: 16px; top: 16px; font-size: 22px; opacity: 0.2; }
+
+  /* SEARCH & FILTERS */
+  .filter-bar {
+    display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .search-box {
+    flex: 1; min-width: 200px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .search-box input {
+    background: none; border: none; color: var(--text); font-family: var(--sans); font-size: 14px;
+    outline: none; flex: 1; width: 100%;
+  }
+  .search-box input::placeholder { color: var(--text-dim); }
+  .filter-select {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; font-family: var(--sans); font-size: 13px;
+    color: var(--text); outline: none; cursor: pointer;
+  }
+  .filter-select:focus { border-color: var(--teal); }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  th {
+    padding: 13px 16px; text-align: left;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text-muted); font-weight: 500; font-family: var(--mono);
+    white-space: nowrap;
+  }
+  td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    font-family: var(--mono); letter-spacing: 0.3px;
+  }
+  .tag-green { background: rgba(74,222,128,0.12); color: var(--green); }
+  .tag-amber { background: rgba(245,166,35,0.12); color: var(--amber); }
+  .tag-red { background: rgba(255,91,107,0.12); color: var(--red); }
+  .tag-blue { background: rgba(77,159,255,0.12); color: var(--blue); }
+  .tag-teal { background: var(--teal-glow); color: var(--teal); }
+
+  .btn-sm {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 12px; font-size: 12px; font-weight: 500;
+    color: var(--text); cursor: pointer; font-family: var(--sans);
+    transition: all 0.15s;
+  }
+  .btn-sm:hover { background: var(--teal-glow); border-color: var(--teal); color: var(--teal); }
+  .btn-teal {
+    background: var(--teal); border: none;
+    border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 600;
+    color: #000; cursor: pointer; font-family: var(--sans); transition: background 0.2s;
+  }
+  .btn-teal:hover { background: var(--teal-dim); }
+
+  /* PRODUCT GRID */
+  .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .product-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; cursor: pointer; transition: all 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .product-card:hover { border-color: var(--teal); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+  .product-img {
+    height: 100px; background: var(--surface2); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; margin-bottom: 14px;
+  }
+  .product-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .product-cat { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; font-family: var(--mono); }
+  .product-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .product-price { font-size: 18px; font-weight: 700; color: var(--teal); letter-spacing: -0.5px; }
+  .product-stock { font-size: 11px; font-family: var(--mono); }
+  .stock-low { color: var(--amber); }
+  .stock-ok { color: var(--green); }
+  .stock-out { color: var(--red); }
+
+  /* ORDER FORM */
+  .order-form { max-width: 640px; }
+  .form-section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px; margin-bottom: 16px;
+  }
+  .form-section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 18px; font-family: var(--mono); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .form-field input, .form-field select, .form-field textarea {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; font-family: var(--sans); font-size: 13px;
+    color: var(--text); outline: none; transition: border-color 0.2s;
+  }
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--teal); }
+  .form-field textarea { resize: vertical; min-height: 80px; }
+  .form-field select option { background: var(--surface); }
+  .form-field.full { grid-column: 1/-1; }
+  .order-total {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; margin-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .order-total-label { font-size: 14px; color: var(--text-muted); }
+  .order-total-value { font-size: 24px; font-weight: 700; color: var(--teal); letter-spacing: -0.5px; }
+
+  /* ORDERS LIST */
+  .order-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; margin-bottom: 12px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: start;
+    transition: border-color 0.2s;
+  }
+  .order-card:hover { border-color: var(--teal); }
+  .order-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .order-id { font-size: 12px; font-family: var(--mono); color: var(--teal); }
+  .order-name { font-size: 15px; font-weight: 600; margin: 2px 0; }
+  .order-meta { font-size: 12px; color: var(--text-muted); }
+  .order-right { text-align: right; }
+  .order-amount { font-size: 18px; font-weight: 700; }
+  .order-date { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: var(--mono); }
+
+  /* DELIVERY */
+  .delivery-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .delivery-card:hover { border-color: var(--teal); }
+  .delivery-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .delivery-id { font-family: var(--mono); font-size: 13px; color: var(--teal); }
+  .delivery-body { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .delivery-field-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 3px; font-family: var(--mono); }
+  .delivery-field-val { font-size: 13px; font-weight: 500; }
+  .status-select {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 12px; font-family: var(--mono); font-size: 12px;
+    color: var(--text); cursor: pointer; outline: none;
+  }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--surface2); border: 1px solid var(--teal);
+    color: var(--teal); padding: 12px 20px; border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    transform: translateY(60px); opacity: 0;
+    transition: all 0.3s; z-index: 9999;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center; z-index: 500;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px; width: min(480px, 90vw);
+    animation: slideUp 0.3s ease;
+  }
+  .modal-title { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; }
+  .btn-ghost {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 18px; font-size: 13px; color: var(--text-muted);
+    cursor: pointer; font-family: var(--sans);
+    transition: all 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--teal); color: var(--teal); }
+
+  .qty-row { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
+  .qty-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: var(--sans); transition: all 0.15s; }
+  .qty-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .qty-val { font-size: 22px; font-weight: 700; min-width: 40px; text-align: center; }
+
+  /* PLATFORM PILLS */
+  .platform-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .platform-pill {
+    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s; font-family: var(--mono);
+  }
+  .platform-pill.active { border-color: var(--teal); background: var(--teal-glow); color: var(--teal); }
+
+  /* PROGRESS BAR */
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--teal); border-radius: 2px; transition: width 0.5s; }
+
+  /* EMPTY STATE */
+  .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-text { font-size: 14px; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .content { margin-left: 0; padding: 20px; }
+    .login-art { display: none; }
+    .login-form-pane { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-art">
+      <div>
+        <div class="art-logo">SellerOS <span>/ User</span></div>
+      </div>
+      <div>
+        <div class="art-headline">Your daily<br>operations<br><em>hub.</em></div>
+      </div>
+      <div class="art-badges">
+        <span class="art-badge">📦 Inventory</span>
+        <span class="art-badge">🛒 Orders</span>
+        <span class="art-badge">🚚 Delivery</span>
+        <span class="art-badge">🔐 Role-Based Access</span>
+      </div>
+    </div>
+    <div class="login-form-pane">
+      <div>
+        <div class="login-title">Sign in</div>
+        <div class="login-sub">Select your role to get started</div>
+      </div>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="login-user" value="rahul.sharma" placeholder="Enter username">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-pass" value="••••••••" placeholder="Enter password">
+      </div>
+      <div class="field">
+        <label>Role</label>
+        <select id="login-role">
+          <option value="seller">Seller</option>
+          <option value="viewer">Inventory Viewer</option>
+          <option value="delivery">Delivery Staff</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Sign In →</button>
+      <div class="role-hint">Branch: Mumbai — Central</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">SellerOS <span>/ User</span></div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="ua">RS</div>
+      <div class="user-name" id="un">Rahul Sharma</div>
+      <div class="user-role" id="ur">Seller</div>
+    </div>
+    <nav class="nav" id="nav">
+      <!-- Filled by JS -->
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="logout-btn" onclick="doLogout()">
+        <span>⎋</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Welcome back — here's what's happening today.</div>
+        </div>
+        <div class="topbar-right">
+          <div class="branch-tag">Branch: <strong>Mumbai Central</strong></div>
+        </div>
+      </div>
+      <div class="stat-grid" id="dash-stats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="table-wrap">
+          <div style="padding:18px 20px 0;font-size:14px;font-weight:600;">Recent Orders</div>
+          <table>
+            <thead><tr><th>Order ID</th><th>Item</th><th>Platform</th><th>Status</th></tr></thead>
+            <tbody id="recent-orders-tb"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <div style="padding:18px 20px 0;font-size:14px;font-weight:600;">Low Stock Alert</div>
+          <table>
+            <thead><tr><th>Product</th><th>Category</th><th>Stock</th></tr></thead>
+            <tbody id="low-stock-tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS PAGE -->
+    <div class="page" id="page-products">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Products</div>
+          <div class="page-sub">Browse and filter available inventory for your branch.</div>
+        </div>
+        <div class="topbar-right">
+          <span class="branch-tag">Branch: <strong>Mumbai Central</strong></span>
+        </div>
+      </div>
+      <div class="platform-pills" id="platform-pills"></div>
+      <div class="filter-bar">
+        <div class="search-box" style="flex:2">
+          <span style="color:var(--text-dim)">⌕</span>
+          <input type="text" placeholder="Search products…" oninput="filterProducts()" id="prod-search">
+        </div>
+        <select class="filter-select" id="cat-filter" onchange="filterProducts()">
+          <option value="">All Categories</option>
+          <option>Electronics</option>
+          <option>Clothing</option>
+          <option>Home & Kitchen</option>
+          <option>Sports</option>
+          <option>Books</option>
+        </select>
+        <select class="filter-select" id="stock-filter" onchange="filterProducts()">
+          <option value="">All Stock Levels</option>
+          <option value="in">In Stock</option>
+          <option value="low">Low Stock</option>
+          <option value="out">Out of Stock</option>
+        </select>
+        <select class="filter-select" id="sort-filter" onchange="filterProducts()">
+          <option value="">Sort: Default</option>
+          <option value="price-asc">Price ↑</option>
+          <option value="price-desc">Price ↓</option>
+          <option value="name">Name A–Z</option>
+        </select>
+      </div>
+      <div class="product-grid" id="product-grid"></div>
+    </div>
+
+    <!-- PLACE ORDER PAGE -->
+    <div class="page" id="page-order">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Place Order</div>
+          <div class="page-sub">Create a new order for a customer.</div>
+        </div>
+      </div>
+      <div class="order-form">
+        <div class="form-section">
+          <div class="form-section-title">Order Details</div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Platform</label>
+              <select id="ord-platform">
+                <option>Amazon</option>
+                <option>Flipkart</option>
+                <option>Own Website</option>
+                <option>Offline</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Product</label>
+              <select id="ord-product" onchange="updateOrderTotal()">
+                <option>Wireless Headphones — ₹2,499</option>
+                <option>Running Shoes — ₹3,199</option>
+                <option>Cotton T-Shirt — ₹799</option>
+                <option>Smart Watch — ₹7,999</option>
+                <option>Yoga Mat — ₹1,299</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Quantity</label>
+              <input type="number" id="ord-qty" value="1" min="1" oninput="updateOrderTotal()">
+            </div>
+            <div class="form-field">
+              <label>Customer Name</label>
+              <input type="text" id="ord-cust" placeholder="Priya Mehta">
+            </div>
+            <div class="form-field full">
+              <label>Delivery Address</label>
+              <textarea id="ord-addr" placeholder="Flat 12B, Sunshine Towers, Andheri West…"></textarea>
+            </div>
+            <div class="form-field">
+              <label>Payment Method</label>
+              <select id="ord-pay">
+                <option>Online — UPI</option>
+                <option>Online — Card</option>
+                <option>Cash on Delivery</option>
+                <option>Store Pickup</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Delivery Staff</label>
+              <select>
+                <option>Auto-Assign</option>
+                <option>Karan Patil</option>
+                <option>Anil Desai</option>
+              </select>
+            </div>
+          </div>
+          <div class="order-total">
+            <span class="order-total-label">Estimated Total</span>
+            <span class="order-total-value" id="ord-total">₹2,499</span>
+          </div>
+        </div>
+        <button class="btn-teal" onclick="placeOrder()" style="width:100%;padding:14px;font-size:15px;">
+          Confirm & Place Order
+        </button>
+      </div>
+    </div>
+
+    <!-- MY ORDERS PAGE -->
+    <div class="page" id="page-myorders">
+      <div class="topbar">
+        <div>
+          <div class="page-title">My Orders</div>
+          <div class="page-sub">Your order history for this session.</div>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <div class="search-box">
+          <span style="color:var(--text-dim)">⌕</span>
+          <input type="text" placeholder="Search orders…">
+        </div>
+        <select class="filter-select">
+          <option>All Platforms</option>
+          <option>Amazon</option>
+          <option>Flipkart</option>
+          <option>Own Website</option>
+          <option>Offline</option>
+        </select>
+        <select class="filter-select">
+          <option>All Statuses</option>
+          <option>Pending</option>
+          <option>Processing</option>
+          <option>Shipped</option>
+          <option>Delivered</option>
+        </select>
+      </div>
+      <div id="my-orders-list"></div>
+    </div>
+
+    <!-- DELIVERY PAGE -->
+    <div class="page" id="page-delivery">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Deliveries</div>
+          <div class="page-sub">Update delivery status for assigned orders.</div>
+        </div>
+        <div class="topbar-right">
+          <div class="branch-tag">Assigned: <strong id="delivery-count">4 orders</strong></div>
+        </div>
+      </div>
+      <div id="delivery-list"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ORDER MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Add to Cart</div>
+    <div class="modal-sub" id="modal-sub">Select quantity and confirm order</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-teal" onclick="addToOrder()">Add to Order →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast">✓ Order placed successfully!</div>
+
+<!-- Script replaced with API version -->
+<script>
+// ============================================================
+//  SellerOS — User Environment
+//  All data fetched from the Node.js/Express API at API_BASE
+// ============================================================
+
+const API_BASE = "http://localhost:3001/api";
+
+// ── State ─────────────────────────────────────────────────────
+let currentUser   = null;   // full user object from /auth/login
+let currentRole   = "";
+let allPlatforms  = [];
+let allCategories = [];
+let selectedPlatformId = "";
+let modalProduct  = null;
+
+// ── API Helper ────────────────────────────────────────────────
+async function api(path, opts = {}) {
+    const res = await fetch(API_BASE + path, {
+        headers: { "Content-Type": "application/json" },
+        ...opts,
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || res.statusText);
+    }
+    return res.json();
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+async function doLogin() {
+    const username = document.getElementById("login-user").value.trim();
+    const password = document.getElementById("login-pass").value;
+    if (!username || !password) { showToast("Enter username and password"); return; }
+    try {
+        const data = await api("/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ username, password }),
+        });
+        currentUser = data.user;
+        currentRole = data.user.role.toLowerCase();
+
+        // Redirect admins/managers away from user environment
+        if (currentRole === "admin" || currentRole === "manager") {
+            showToast("Use the Admin Environment for this role.");
+            return;
+        }
+
+        document.getElementById("login-screen").classList.add("hidden");
+        setTimeout(() => {
+            document.getElementById("app").style.display = "flex";
+            initApp();
+        }, 600);
+    } catch (e) {
+        showToast("❌ " + e.message);
+    }
+}
+
+function doLogout() {
+    currentUser = null;
+    document.getElementById("app").style.display = "none";
+    document.getElementById("login-screen").classList.remove("hidden");
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+async function initApp() {
+    const roleLabel = currentUser.role.toUpperCase();
+    const initials  = currentUser.name.split(" ").map(w => w[0]).join("").slice(0,2);
+    document.getElementById("un").textContent = currentUser.name;
+    document.getElementById("ur").textContent = roleLabel;
+    document.getElementById("ua").textContent = initials;
+
+    // Load reference data
+    allPlatforms  = await api("/platforms").catch(() => []);
+    allCategories = await api("/categories").catch(() => []);
+
+    buildNav(currentRole);
+    await Promise.all([
+        buildDashStats(),
+        buildRecentOrders(),
+        buildLowStock(),
+        buildPlatformPills(),
+    ]);
+    buildProducts();
+    showPage("dashboard");
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+const ROLE_NAV = {
+    seller: [
+        { id: "dashboard", icon: "◈", label: "Dashboard" },
+        { id: "products",  icon: "⊞", label: "Products",     section: "INVENTORY" },
+        { id: "order",     icon: "＋", label: "Place Order",  section: "ORDERS" },
+        { id: "myorders",  icon: "≡", label: "My Orders" },
+    ],
+    viewer: [
+        { id: "dashboard", icon: "◈", label: "Dashboard" },
+        { id: "products",  icon: "⊞", label: "Products",    section: "INVENTORY" },
+        { id: "myorders",  icon: "≡", label: "My Orders",   section: "ORDERS" },
+    ],
+    delivery: [
+        { id: "dashboard", icon: "◈", label: "Dashboard" },
+        { id: "delivery",  icon: "🚚", label: "Deliveries", section: "TASKS" },
+        { id: "myorders",  icon: "≡", label: "Order History" },
+    ],
+};
+
+function buildNav(role) {
+    const nav   = document.getElementById("nav");
+    const items = ROLE_NAV[role] || ROLE_NAV.seller;
+    let html = "", lastSection = null;
+    items.forEach(item => {
+        if (item.section && item.section !== lastSection) {
+            html += `<div class="nav-section">${item.section}</div>`;
+            lastSection = item.section;
+        }
+        html += `<a class="nav-item" data-page="${item.id}" onclick="showPage('${item.id}')">
+            <span class="nav-icon">${item.icon}</span>${item.label}
+        </a>`;
+    });
+    nav.innerHTML = html;
+}
+
+function showPage(id) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n =>
+        n.classList.toggle("active", n.dataset.page === id)
+    );
+    const p = document.getElementById("page-" + id);
+    if (p) p.classList.add("active");
+
+    // Load page data on navigate
+    if (id === "products")  buildProducts();
+    if (id === "myorders")  buildOrders();
+    if (id === "delivery")  buildDeliveries();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+async function buildDashStats() {
+    const kpis = await api("/dashboard/kpis").catch(() => null);
+    const stats = currentRole === "delivery"
+        ? [
+            { label: "Assigned Deliveries", value: kpis?.in_transit ?? "—", delta: "Today's schedule",    dir: "neutral", icon: "🚚" },
+            { label: "Completed",            value: "—",                     delta: "This shift",          dir: "up",      icon: "✓" },
+            { label: "In Transit",           value: kpis?.in_transit ?? "—", delta: "Currently out",       dir: "neutral", icon: "📍" },
+            { label: "Pending Pickup",       value: "—",                     delta: "Ready at warehouse",  dir: "neutral", icon: "⏳" },
+          ]
+        : currentRole === "viewer"
+        ? [
+            { label: "Total Products",  value: kpis?.products    ?? "—", delta: "In branch",      dir: "neutral", icon: "📦" },
+            { label: "Out of Stock",    value: kpis?.out_of_stock ?? "—", delta: "Need reorder",  dir: "down",    icon: "❌" },
+            { label: "Active Platforms",value: allPlatforms.length,      delta: "All running",    dir: "up",      icon: "🌐" },
+            { label: "In Transit",      value: kpis?.in_transit  ?? "—", delta: "Deliveries out", dir: "neutral", icon: "🚚" },
+          ]
+        : [
+            { label: "Orders Today",     value: kpis?.orders   ?? "—",                delta: "Today so far",  dir: "up",      icon: "🛒" },
+            { label: "Revenue Today",    value: kpis?.revenue  ? "₹" + Number(kpis.revenue).toLocaleString("en-IN")  : "—", delta: "Today total", dir: "up", icon: "💰" },
+            { label: "Products in Branch",value: kpis?.products ?? "—",               delta: `${kpis?.out_of_stock ?? 0} out of stock`, dir: "down", icon: "📦" },
+            { label: "Deliveries Out",   value: kpis?.in_transit ?? "—",              delta: "Across branches", dir: "neutral", icon: "🚚" },
+          ];
+
+    document.getElementById("dash-stats").innerHTML = stats.map(s => `
+        <div class="stat-card">
+            <div class="stat-icon">${s.icon}</div>
+            <div class="stat-label">${s.label}</div>
+            <div class="stat-value">${s.value}</div>
+            <div class="stat-delta ${s.dir}">${s.delta}</div>
+        </div>`).join("");
+}
+
+async function buildRecentOrders() {
+    const params = currentRole === "seller"
+        ? `?seller_id=${currentUser.id}&limit=5`
+        : `?branch_id=${currentUser.branch_id || ""}&limit=5`;
+    const orders = await api("/orders" + params).catch(() => []);
+    const statusMap = { Shipped:"blue", Processing:"amber", Delivered:"green", Pending:"red", Cancelled:"red" };
+    document.getElementById("recent-orders-tb").innerHTML = orders.length
+        ? orders.map(o => `<tr>
+            <td style="font-family:var(--mono);font-size:12px;color:var(--teal)">${o.order_ref}</td>
+            <td>${o.product_name}</td>
+            <td><span class="tag tag-blue" style="font-size:10px">${o.platform_name}</span></td>
+            <td><span class="tag tag-${statusMap[o.status] || 'amber'}">${o.status}</span></td>
+          </tr>`).join("")
+        : `<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:20px">No orders yet</td></tr>`;
+}
+
+async function buildLowStock() {
+    const params = currentUser.branch_id ? `?branch_id=${currentUser.branch_id}&stock=low` : "?stock=low";
+    const items = await api("/inventory" + params).catch(() => []);
+    // Also fetch out-of-stock
+    const params2 = currentUser.branch_id ? `?branch_id=${currentUser.branch_id}&stock=out` : "?stock=out";
+    const outItems = await api("/inventory" + params2).catch(() => []);
+    const all = [...items, ...outItems].slice(0, 6);
+    document.getElementById("low-stock-tb").innerHTML = all.length
+        ? all.map(p => `<tr>
+            <td>${p.emoji} ${p.name}</td>
+            <td><span class="tag tag-teal" style="font-size:10px">${p.category}</span></td>
+            <td><span class="${p.stock === 0 ? "stock-out" : "stock-low"}" style="font-family:var(--mono);font-weight:600">
+                ${p.stock === 0 ? "OUT" : p.stock + " left"}</span></td>
+          </tr>`).join("")
+        : `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:20px">All stocked ✓</td></tr>`;
+}
+
+// ── PRODUCTS ──────────────────────────────────────────────────
+function buildPlatformPills() {
+    const pills = [{ id:"", name:"All" }, ...allPlatforms];
+    document.getElementById("platform-pills").innerHTML = pills.map((p, i) =>
+        `<div class="platform-pill ${i === 0 ? "active" : ""}"
+              onclick="setPlatform('${p.id}', this)">${p.name}</div>`
+    ).join("");
+}
+
+function setPlatform(id, el) {
+    selectedPlatformId = id;
+    document.querySelectorAll(".platform-pill").forEach(x => x.classList.remove("active"));
+    el.classList.add("active");
+    buildProducts();
+}
+
+async function buildProducts() {
+    const grid = document.getElementById("product-grid");
+    if (!grid) return;
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">Loading…</div>`;
+
+    const search    = document.getElementById("prod-search")?.value || "";
+    const catFilter = document.getElementById("cat-filter")?.value || "";
+    const stockF    = document.getElementById("stock-filter")?.value || "";
+    const sortF     = document.getElementById("sort-filter")?.value || "";
+
+    // Find category id from name
+    const catObj = allCategories.find(c => c.name === catFilter);
+    const catId  = catObj ? catObj.id : "";
+
+    const params = new URLSearchParams();
+    if (currentUser.branch_id) params.set("branch_id", currentUser.branch_id);
+    if (selectedPlatformId)     params.set("platform_id", selectedPlatformId);
+    if (search)                 params.set("search", search);
+    if (catId)                  params.set("category_id", catId);
+
+    try {
+        let products = await api("/products?" + params.toString());
+
+        // Client-side stock filter (API returns total_stock)
+        if (stockF === "in")  products = products.filter(p => p.total_stock > 8);
+        if (stockF === "low") products = products.filter(p => p.total_stock > 0 && p.total_stock <= 8);
+        if (stockF === "out") products = products.filter(p => p.total_stock === 0);
+
+        // Sort
+        if (sortF === "price-asc")  products.sort((a,b) => a.sell_price - b.sell_price);
+        if (sortF === "price-desc") products.sort((a,b) => b.sell_price - a.sell_price);
+        if (sortF === "name")       products.sort((a,b) => a.name.localeCompare(b.name));
+
+        if (!products.length) {
+            grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📭</div><div class="empty-text">No products found</div></div>`;
+            return;
+        }
+        grid.innerHTML = products.map(p => {
+            const stock      = p.total_stock;
+            const stockClass = stock === 0 ? "stock-out" : stock <= 8 ? "stock-low" : "stock-ok";
+            const stockLabel = stock === 0 ? "Out of stock" : stock <= 8 ? `Only ${stock} left` : `${stock} in stock`;
+            const disabled   = stock === 0 ? "opacity:0.5;pointer-events:none" : "";
+            return `<div class="product-card" style="${disabled}" onclick="openModal(${p.id})">
+                <div class="product-img">${p.emoji}</div>
+                <div class="product-name">${p.name}</div>
+                <div class="product-cat">${p.category}</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">${p.platforms || "—"}</div>
+                <div class="product-row">
+                    <div class="product-price">₹${Number(p.sell_price).toLocaleString("en-IN")}</div>
+                    <div class="product-stock ${stockClass}">${stockLabel}</div>
+                </div>
+                <div class="progress-bar" style="margin-top:10px">
+                    <div class="progress-fill" style="width:${Math.min(100, stock/50*100)}%;${stock<=8?"background:var(--amber)":""}"></div>
+                </div>
+            </div>`;
+        }).join("");
+    } catch (e) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--red);padding:40px">Error loading products: ${e.message}</div>`;
+    }
+}
+
+// Filter wrapper so HTML oninput still works
+function filterProducts() { buildProducts(); }
+
+// ── ORDER MODAL ───────────────────────────────────────────────
+let productCache = {};
+
+async function openModal(productId) {
+    if (currentRole === "viewer") { showToast("View-only access — cannot place orders"); return; }
+    try {
+        // Get branch-specific inventory for this product
+        const params = currentUser.branch_id
+            ? `?branch_id=${currentUser.branch_id}&search=`
+            : "";
+        const prods = await api("/products?" + (currentUser.branch_id ? `branch_id=${currentUser.branch_id}` : ""));
+        const p = prods.find(x => x.id === productId);
+        if (!p) return;
+        modalProduct = p;
+        productCache[productId] = p;
+
+        document.getElementById("modal-title").textContent = p.emoji + " " + p.name;
+        document.getElementById("modal-sub").textContent   = p.category + " · ₹" + Number(p.sell_price).toLocaleString("en-IN");
+        document.getElementById("modal-body").innerHTML = `
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Available: ${p.total_stock} units</div>
+            <div class="qty-row">
+                <button class="qty-btn" onclick="changeQty(-1)">−</button>
+                <span class="qty-val" id="modal-qty">1</span>
+                <button class="qty-btn" onclick="changeQty(1)">+</button>
+                <span style="font-size:13px;color:var(--text-muted);margin-left:8px">
+                    = <strong id="modal-price">₹${Number(p.sell_price).toLocaleString("en-IN")}</strong>
+                </span>
+            </div>`;
+        document.getElementById("modal").classList.add("open");
+    } catch (e) { showToast("Error: " + e.message); }
+}
+
+function changeQty(d) {
+    const el  = document.getElementById("modal-qty");
+    let q     = parseInt(el.textContent) + d;
+    q         = Math.max(1, Math.min(modalProduct.total_stock, q));
+    el.textContent = q;
+    document.getElementById("modal-price").textContent =
+        "₹" + (modalProduct.sell_price * q).toLocaleString("en-IN");
+}
+
+function closeModal() { document.getElementById("modal").classList.remove("open"); }
+
+function addToOrder() {
+    closeModal();
+    // Pre-fill the order form
+    const sel = document.getElementById("ord-product");
+    if (sel) {
+        // Populate order form dynamically with fetched products
+        sel.innerHTML = `<option value="${modalProduct.id}" data-price="${modalProduct.sell_price}">${modalProduct.name} — ₹${Number(modalProduct.sell_price).toLocaleString("en-IN")}</option>`;
+    }
+    showPage("order");
+    updateOrderTotal();
+    showToast("Product added — complete the order details below");
+}
+
+// ── PLACE ORDER ───────────────────────────────────────────────
+async function populateOrderForm() {
+    // Fill product dropdown
+    try {
+        const params = currentUser.branch_id ? `?branch_id=${currentUser.branch_id}` : "";
+        const prods  = await api("/products" + params);
+        const sel    = document.getElementById("ord-product");
+        if (sel) sel.innerHTML = prods.map(p =>
+            `<option value="${p.id}" data-price="${p.sell_price}">${p.name} — ₹${Number(p.sell_price).toLocaleString("en-IN")}</option>`
+        ).join("");
+
+        // Fill platform dropdown
+        const psel = document.getElementById("ord-platform");
+        if (psel) psel.innerHTML = allPlatforms.map(p =>
+            `<option value="${p.id}">${p.name}</option>`
+        ).join("");
+
+        updateOrderTotal();
+    } catch(e) { /* silent */ }
+}
+
+function updateOrderTotal() {
+    const sel   = document.getElementById("ord-product");
+    const qty   = parseInt(document.getElementById("ord-qty")?.value || 1);
+    const price = sel?.selectedOptions?.[0]?.dataset?.price || 0;
+    const el    = document.getElementById("ord-total");
+    if (el) el.textContent = "₹" + (price * qty).toLocaleString("en-IN");
+}
+
+async function placeOrder() {
+    const productSel  = document.getElementById("ord-product");
+    const platformSel = document.getElementById("ord-platform");
+    const qty         = parseInt(document.getElementById("ord-qty")?.value || 1);
+    const custName    = document.getElementById("ord-cust")?.value?.trim();
+    const custAddr    = document.getElementById("ord-addr")?.value?.trim();
+    const payMethod   = document.getElementById("ord-pay")?.value || "UPI";
+
+    if (!custName) { showToast("Please enter a customer name"); return; }
+
+    const payMap = { "Online — UPI": "UPI", "Online — Card": "Card", "Cash on Delivery": "COD", "Store Pickup": "Store Pickup" };
+
+    try {
+        const result = await api("/orders", {
+            method: "POST",
+            body: JSON.stringify({
+                product_id:       parseInt(productSel?.value),
+                branch_id:        currentUser.branch_id,
+                platform_id:      parseInt(platformSel?.value),
+                customer_name:    custName,
+                customer_address: custAddr,
+                qty,
+                payment_method:   payMap[payMethod] || "UPI",
+                seller_id:        currentUser.id,
+            }),
+        });
+        showToast(`✓ ${result.order_ref} placed — ₹${Number(result.total_amount).toLocaleString("en-IN")}`);
+        showPage("myorders");
+    } catch (e) {
+        showToast("❌ " + e.message);
+    }
+}
+
+// ── MY ORDERS ─────────────────────────────────────────────────
+async function buildOrders() {
+    const list = document.getElementById("my-orders-list");
+    if (!list) return;
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">Loading…</div>`;
+    try {
+        const params = currentRole === "seller"
+            ? `?seller_id=${currentUser.id}`
+            : `?branch_id=${currentUser.branch_id || ""}`;
+        const orders = await api("/orders" + params);
+        const statusMap = { Shipped:"blue", Processing:"amber", Delivered:"green", Pending:"red", Cancelled:"red" };
+        list.innerHTML = orders.length
+            ? orders.map(o => `
+                <div class="order-card">
+                    <div class="order-icon">📦</div>
+                    <div>
+                        <div class="order-id">${o.order_ref}</div>
+                        <div class="order-name">${o.product_name}</div>
+                        <div class="order-meta">${o.customer_name} · ${o.platform_name} · ${o.branch_name}</div>
+                        <div style="margin-top:8px"><span class="tag tag-${statusMap[o.status] || "amber"}">${o.status}</span></div>
+                    </div>
+                    <div class="order-right">
+                        <div class="order-amount">₹${Number(o.total_amount).toLocaleString("en-IN")}</div>
+                        <div class="order-date">${new Date(o.created_at).toLocaleDateString("en-IN", {day:"numeric",month:"short",year:"numeric"})}</div>
+                    </div>
+                </div>`).join("")
+            : `<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">No orders found</div></div>`;
+    } catch (e) {
+        list.innerHTML = `<div style="text-align:center;color:var(--red);padding:40px">Error: ${e.message}</div>`;
+    }
+}
+
+// ── DELIVERIES ────────────────────────────────────────────────
+async function buildDeliveries() {
+    const list = document.getElementById("delivery-list");
+    if (!list) return;
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">Loading…</div>`;
+    try {
+        const params = `?staff_id=${currentUser.id}`;
+        const deliveries = await api("/deliveries" + params);
+        document.getElementById("delivery-count").textContent = `${deliveries.length} orders`;
+        const statusClass = { "Delivered":"green", "Out for Delivery":"teal", "Picked Up":"blue", "Pending":"amber" };
+        list.innerHTML = deliveries.length
+            ? deliveries.map(d => `
+                <div class="delivery-card">
+                    <div class="delivery-header">
+                        <div>
+                            <span class="delivery-id">${d.delivery_ref}</span>
+                            <span style="font-size:12px;color:var(--text-muted)"> → ${d.order_ref}</span>
+                        </div>
+                        <span class="tag tag-${statusClass[d.status] || "amber"}">${d.status}</span>
+                    </div>
+                    <div class="delivery-body">
+                        <div>
+                            <div class="delivery-field-label">Customer</div>
+                            <div class="delivery-field-val">${d.customer_name}</div>
+                        </div>
+                        <div>
+                            <div class="delivery-field-label">Product</div>
+                            <div class="delivery-field-val">${d.product_name}</div>
+                        </div>
+                        <div style="grid-column:1/-1">
+                            <div class="delivery-field-label">Delivery Address</div>
+                            <div class="delivery-field-val">${d.delivery_address || "—"}</div>
+                        </div>
+                        <div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;margin-top:4px">
+                            <div class="delivery-field-label" style="margin:0">Update Status:</div>
+                            <select class="status-select" onchange="updateDelivery(${d.id}, this.value)">
+                                <option ${d.status==="Pending"?"selected":""}>Pending</option>
+                                <option ${d.status==="Picked Up"?"selected":""}>Picked Up</option>
+                                <option ${d.status==="Out for Delivery"?"selected":""}>Out for Delivery</option>
+                                <option ${d.status==="Delivered"?"selected":""}>Delivered</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>`).join("")
+            : `<div class="empty"><div class="empty-icon">🚚</div><div class="empty-text">No deliveries assigned</div></div>`;
+    } catch (e) {
+        list.innerHTML = `<div style="text-align:center;color:var(--red);padding:40px">Error: ${e.message}</div>`;
+    }
+}
+
+async function updateDelivery(id, status) {
+    try {
+        await api(`/deliveries/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+        showToast(`Status updated → "${status}"`);
+        buildDeliveries(); // Refresh
+    } catch (e) { showToast("❌ " + e.message); }
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+// ── Order form populate on page show ─────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+    // Intercept nav clicks to populate order form when navigating to it
+    document.querySelectorAll("[onclick*=\"showPage('order')\"]").forEach(el => {
+        const orig = el.getAttribute("onclick");
+        el.setAttribute("onclick", `${orig}; populateOrderForm();`);
+    });
+});
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+</script>
+</body>
+</html>
