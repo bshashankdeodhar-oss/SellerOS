@@ -81,8 +81,8 @@ Open either HTML file directly in your browser:
 
 | File                       | URL to open                          |
 |----------------------------|--------------------------------------|
-| <a href="user-environment.html"></a>    | Double-click it or drag into browser |
-| <a href="admin-environment.html"></a>   | Double-click it or drag into browser |
+| `user-environment.html`    | Double-click it or drag into browser |
+| `admin-environment.html`   | Double-click it or drag into browser |
 
 > **Important:** The backend server (Step 2) must be running before you open the HTML files.
 
@@ -165,4 +165,5 @@ All endpoints run at `http://localhost:3001`
 **Port 3001 already in use**
 → Change `PORT=3002` in `.env` and update `API_BASE` in both HTML files.
 #
+
 
