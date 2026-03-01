@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS users (
     name        VARCHAR(100) NOT NULL,
     username    VARCHAR(50)  NOT NULL UNIQUE,
     email       VARCHAR(150) NOT NULL UNIQUE,
+    phone       VARCHAR(20) UNIQUE,
     password    VARCHAR(255) NOT NULL,           -- store hashed passwords
     role_id     INT          NOT NULL,
     branch_id   INT,                             -- NULL means all branches (Admin)
@@ -64,6 +65,31 @@ CREATE TABLE IF NOT EXISTS users (
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id)    REFERENCES roles(id),
     FOREIGN KEY (branch_id)  REFERENCES branches(id)
+);
+
+-- Authentication support tables used by backend login flows
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT NOT NULL,
+    token       VARCHAR(10) NOT NULL,
+    identifier  VARCHAR(150) NOT NULL,   -- email or phone used to request OTP
+    expires_at  DATETIME NOT NULL,
+    used        BOOLEAN DEFAULT FALSE,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_reset_user_used (user_id, used),
+    INDEX idx_reset_expires (expires_at)
+);
+
+CREATE TABLE IF NOT EXISTS user_activity_log (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT NOT NULL,
+    action      VARCHAR(100) NOT NULL,
+    detail      TEXT,
+    ip_address  VARCHAR(45),
+    logged_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_activity_user_time (user_id, logged_at)
 );
 
 -- ─────────────────────────────────────────────────────────────

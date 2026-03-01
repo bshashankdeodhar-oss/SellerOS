@@ -12,7 +12,7 @@
   :root {
     --bg: #0c0f13;
     --surface: #141820;
-    --surface2: #1c2230;
+    --surface2: #1`c2230;
     --border: #232b3a;
     --teal: #00d4b4;
     --teal-dim: #00a88e;
@@ -114,7 +114,7 @@
     display: flex; flex-direction: column; justify-content: center; gap: 24px;
   }
   .login-title { font-size: 22px; font-weight: 600; }
-  .login-sub { font-size: 13px; color: var(--text-muted); margin-top: -16px; }
+  .login-sub { font-size: 13px; color: var(--text-muted); margin-top: 0px; }
 
   .field { display: flex; flex-direction: column; gap: 8px; }
   .field label { font-size: 12px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; }
@@ -142,8 +142,6 @@
   }
   .btn-primary:hover { background: var(--teal-dim); }
   .btn-primary:active { transform: scale(0.98); }
-
-  .role-hint { font-size: 11px; color: var(--text-dim); text-align: center; font-family: var(--mono); }
 
   /* MAIN APP */
   #app { display: none; min-height: 100vh; }
@@ -502,7 +500,6 @@
         </select>
       </div>
       <button class="btn-primary" onclick="doLogin()">Sign In →</button>
-      <div class="role-hint">Branch: Mumbai — Central</div>
     </div>
   </div>
 </div>
