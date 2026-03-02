@@ -98,7 +98,6 @@ function requirePermission(flag) {
     };
 }
 
-
 // ─────────────────────────────────────────────────────────────
 //  AUTH — Login, Register, Change Password, Forgot Password,
 //          Edit Profile, Verify OTP
@@ -444,6 +443,28 @@ app.post("/api/branches", async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post("/api/customer/register", async (req, res) => {
+    try {
+        const { name, email, phone, password } = req.body;
+        if (!name || !password || (!email && !phone))
+            return res.status(400).json({ error: "Name, password, email or phone required" });
+
+        const [[exists]] = await query(
+            "SELECT id FROM customers WHERE email=? OR phone=?",
+            [email || "", phone || ""]
+        );
+        if (exists)
+            return res.status(409).json({ error: "Customer already exists" });
+
+        const [result] = await query(
+            "INSERT INTO customers (name, email, phone, password) VALUES (?,?,?,?)",
+            [name, email || null, phone || null, password]
+        );
+
+        res.status(201).json({ success: true, customer_id: result.insertId });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─────────────────────────────────────────────────────────────
 //  PLATFORMS
 // ─────────────────────────────────────────────────────────────
@@ -499,6 +520,7 @@ app.get("/api/inventory", async (req, res) => {
 app.patch("/api/inventory/:product_id/:branch_id/:platform_id",
     requireRole("Admin", "Manager"),
     requirePermission("can_update"),
+    
     async (req, res) => {
     try {
         const { product_id, branch_id, platform_id } = req.params;
@@ -621,9 +643,12 @@ app.post("/api/orders", async (req, res) => {
 
         // Upsert customer
         let customer_id;
+
         const [[existing]] = await conn.execute(
-            "SELECT id FROM customers WHERE phone = ?", [customer_phone || ""]
+            "SELECT id FROM customers WHERE phone = ?",
+            [customer_phone || ""]
         );
+
         if (existing) {
             customer_id = existing.id;
         } else {
@@ -1121,17 +1146,20 @@ app.post("/api/transactions/bulk-order",
 
             // Upsert customer
             let customer_id;
+
             const [[existing]] = await conn.execute(
-                "SELECT id FROM customers WHERE phone=?", [customer_phone || ""]
+                "SELECT id FROM customers WHERE phone = ?",
+                [customer_phone || ""]
             );
+
             if (existing) {
                 customer_id = existing.id;
             } else {
-                const [cr] = await conn.execute(
+                const [cres] = await conn.execute (
                     "INSERT INTO customers (name, phone, address) VALUES (?,?,?)",
                     [customer_name, customer_phone || null, customer_address || null]
                 );
-                customer_id = cr.insertId;
+            customer_id = cres.insertId;
             }
 
             const orderRefs = [];
@@ -1290,6 +1318,421 @@ app.get("/api/explain/all", async (_req, res) => {
 });
 
 
+// =============================================================
+//  CUSTOMER SHOPPING SITE API
+//  Separate from staff auth — customers use customer_accounts table
+// =============================================================
+
+// ── POST /api/customer/register ───────────────────────────────
+app.post("/api/customer/register", async (req, res) => {
+    try {
+        const { name, email, phone, password } = req.body;
+        if (!name || !password || (!email && !phone))
+            return res.status(400).json({ error: "Name, password, and email or phone are required" });
+        if (password.length < 6)
+            return res.status(400).json({ error: "Password must be at least 6 characters" });
+
+        if (email) {
+            const [[ex]] = await query("SELECT id FROM customer_accounts WHERE email=?", [email]);
+            if (ex) return res.status(409).json({ error: "Email already registered" });
+        }
+        if (phone) {
+            const [[ex]] = await query("SELECT id FROM customer_accounts WHERE phone=?", [phone]);
+            if (ex) return res.status(409).json({ error: "Phone already registered" });
+        }
+
+        const [result] = await query(
+            "INSERT INTO customer_accounts (name, email, phone, password) VALUES (?,?,?,?)",
+            [name, email || null, phone || null, password]
+        );
+        const [[cust]] = await query("SELECT id, name, email, phone FROM customer_accounts WHERE id=?", [result.insertId]);
+        res.status(201).json({ success: true, customer: cust });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/customer/login ──────────────────────────────────
+// identifier = email OR phone
+app.post("/api/customer/login", async (req, res) => {
+    try {
+        const { identifier, password } = req.body;
+        if (!identifier || !password)
+            return res.status(400).json({ error: "Email/phone and password are required" });
+
+        const [[cust]] = await query(
+            "SELECT id, name, email, phone, is_active FROM customer_accounts WHERE (email=? OR phone=?) AND password=?",
+            [identifier, identifier, password]
+        );
+        if (!cust) return res.status(401).json({ error: "Invalid credentials" });
+        if (!cust.is_active) return res.status(403).json({ error: "Account is deactivated" });
+        res.json({ success: true, customer: cust });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/customer/forgot-password ────────────────────────
+app.post("/api/customer/forgot-password", async (req, res) => {
+    try {
+        const { identifier } = req.body;
+        if (!identifier) return res.status(400).json({ error: "Email or phone required" });
+        const [[cust]] = await query(
+            "SELECT id FROM customer_accounts WHERE email=? OR phone=?", [identifier, identifier]
+        );
+        if (!cust) return res.status(404).json({ error: "No account found" });
+
+        await query("UPDATE customer_otp_tokens SET used=TRUE WHERE customer_id=? AND used=FALSE", [cust.id]);
+
+        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        const exp = new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0,19).replace("T"," ");
+        await query(
+            "INSERT INTO customer_otp_tokens (customer_id, token, identifier, expires_at) VALUES (?,?,?,?)",
+            [cust.id, otp, identifier, exp]
+        );
+        res.json({ success: true, message: "OTP sent", otp, customer_id: cust.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/customer/verify-otp ─────────────────────────────
+app.post("/api/customer/verify-otp", async (req, res) => {
+    try {
+        const { customer_id, otp } = req.body;
+        const [[token]] = await query(
+            "SELECT id FROM customer_otp_tokens WHERE customer_id=? AND token=? AND used=FALSE AND expires_at>NOW()",
+            [customer_id, otp]
+        );
+        if (!token) return res.status(400).json({ error: "Invalid or expired OTP" });
+        await query("UPDATE customer_otp_tokens SET used=TRUE WHERE id=?", [token.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/customer/reset-password ─────────────────────────
+app.post("/api/customer/reset-password", async (req, res) => {
+    try {
+        const { customer_id, new_password } = req.body;
+        if (!customer_id || !new_password || new_password.length < 6)
+            return res.status(400).json({ error: "customer_id and new_password (min 6 chars) required" });
+        await query("UPDATE customer_accounts SET password=? WHERE id=?", [new_password, customer_id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PATCH /api/customer/profile ───────────────────────────────
+app.patch("/api/customer/profile", async (req, res) => {
+    try {
+        const { customer_id, name, email, phone } = req.body;
+        if (!customer_id) return res.status(400).json({ error: "customer_id required" });
+        if (email) {
+            const [[ex]] = await query("SELECT id FROM customer_accounts WHERE email=? AND id!=?", [email, customer_id]);
+            if (ex) return res.status(409).json({ error: "Email already in use" });
+        }
+        if (phone) {
+            const [[ex]] = await query("SELECT id FROM customer_accounts WHERE phone=? AND id!=?", [phone, customer_id]);
+            if (ex) return res.status(409).json({ error: "Phone already in use" });
+        }
+        await query(
+            "UPDATE customer_accounts SET name=COALESCE(NULLIF(?,''),name), email=COALESCE(NULLIF(?,''),email), phone=COALESCE(NULLIF(?,''),phone) WHERE id=?",
+            [name||"", email||"", phone||"", customer_id]
+        );
+        const [[updated]] = await query("SELECT id,name,email,phone FROM customer_accounts WHERE id=?", [customer_id]);
+        res.json({ success: true, customer: updated });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/customer/change-password ────────────────────────
+app.post("/api/customer/change-password", async (req, res) => {
+    try {
+        const { customer_id, current_password, new_password } = req.body;
+        if (!customer_id || !current_password || !new_password)
+            return res.status(400).json({ error: "All fields required" });
+        if (new_password.length < 6)
+            return res.status(400).json({ error: "New password must be at least 6 characters" });
+        const [[cust]] = await query(
+            "SELECT id FROM customer_accounts WHERE id=? AND password=?", [customer_id, current_password]
+        );
+        if (!cust) return res.status(401).json({ error: "Current password is incorrect" });
+        await query("UPDATE customer_accounts SET password=? WHERE id=?", [new_password, customer_id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/customer/products ────────────────────────────────
+// Public — browse all products with stock info
+app.get("/api/customer/products", async (req, res) => {
+    try {
+        const { search, category_id, sort } = req.query;
+        let sql = `
+            SELECT p.id, p.name, p.emoji, c.name AS category,
+                   p.sell_price AS price,
+                   COALESCE(SUM(i.stock),0) AS total_stock,
+                   GROUP_CONCAT(DISTINCT pl.name ORDER BY pl.name SEPARATOR ', ') AS platforms
+            FROM   products p
+            JOIN   categories c  ON p.category_id = c.id
+            LEFT JOIN inventory i   ON i.product_id  = p.id
+            LEFT JOIN platforms pl  ON i.platform_id = pl.id
+            WHERE  1=1`;
+        const params = [];
+        if (search)      { sql += " AND p.name LIKE ?";      params.push(`%${search}%`); }
+        if (category_id) { sql += " AND p.category_id = ?";  params.push(category_id); }
+        sql += " GROUP BY p.id";
+        if (sort === "price-asc")  sql += " ORDER BY p.sell_price ASC";
+        else if (sort === "price-desc") sql += " ORDER BY p.sell_price DESC";
+        else sql += " ORDER BY p.name ASC";
+        const [rows] = await query(sql, params);
+        res.json(rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/customer/categories ─────────────────────────────
+app.get("/api/customer/categories", async (_req, res) => {
+    try {
+        const [rows] = await query("SELECT * FROM categories ORDER BY name", []);
+        res.json(rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CART ──────────────────────────────────────────────────────
+
+// GET /api/customer/cart/:customer_id
+app.get("/api/customer/cart/:customer_id", async (req, res) => {
+    try {
+        const [rows] = await query(
+            `SELECT c.id, c.qty, p.id AS product_id, p.name, p.emoji, p.sell_price AS price,
+                    cat.name AS category, pl.name AS platform, b.name AS branch,
+                    c.platform_id, c.branch_id,
+                    COALESCE(i.stock,0) AS available_stock
+             FROM   cart c
+             JOIN   products p   ON c.product_id  = p.id
+             JOIN   categories cat ON p.category_id = cat.id
+             JOIN   platforms pl ON c.platform_id = pl.id
+             JOIN   branches b   ON c.branch_id   = b.id
+             LEFT JOIN inventory i ON i.product_id=c.product_id AND i.branch_id=c.branch_id AND i.platform_id=c.platform_id
+             WHERE  c.customer_id=?`,
+            [req.params.customer_id]
+        );
+        res.json(rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/customer/cart  — add or update cart item
+app.post("/api/customer/cart", async (req, res) => {
+    try {
+        const { customer_id, product_id, platform_id, branch_id, qty } = req.body;
+        await query(
+            `INSERT INTO cart (customer_id, product_id, platform_id, branch_id, qty)
+             VALUES (?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE qty=?`,
+            [customer_id, product_id, platform_id, branch_id, qty, qty]
+        );
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/customer/cart/:id  — remove single cart item
+app.delete("/api/customer/cart/:id", async (req, res) => {
+    try {
+        await query("DELETE FROM cart WHERE id=?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/customer/cart/clear/:customer_id
+app.delete("/api/customer/cart/clear/:customer_id", async (req, res) => {
+    try {
+        await query("DELETE FROM cart WHERE customer_id=?", [req.params.customer_id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── WISHLIST ──────────────────────────────────────────────────
+
+// GET /api/customer/wishlist/:customer_id
+app.get("/api/customer/wishlist/:customer_id", async (req, res) => {
+    try {
+        const [rows] = await query(
+            `SELECT w.id, w.product_id, p.name, p.emoji, p.sell_price AS price,
+                    c.name AS category,
+                    COALESCE(SUM(i.stock),0) AS total_stock
+             FROM   wishlist w
+             JOIN   products p   ON w.product_id   = p.id
+             JOIN   categories c ON p.category_id  = c.id
+             LEFT JOIN inventory i ON i.product_id = p.id
+             WHERE  w.customer_id=?
+             GROUP BY w.id`,
+            [req.params.customer_id]
+        );
+        res.json(rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/customer/wishlist  — toggle (add or remove)
+app.post("/api/customer/wishlist", async (req, res) => {
+    try {
+        const { customer_id, product_id } = req.body;
+        const [[ex]] = await query(
+            "SELECT id FROM wishlist WHERE customer_id=? AND product_id=?", [customer_id, product_id]
+        );
+        if (ex) {
+            await query("DELETE FROM wishlist WHERE id=?", [ex.id]);
+            res.json({ success: true, action: "removed" });
+        } else {
+            await query("INSERT INTO wishlist (customer_id, product_id) VALUES (?,?)", [customer_id, product_id]);
+            res.json({ success: true, action: "added" });
+        }
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── ADDRESSES ─────────────────────────────────────────────────
+
+// GET /api/customer/addresses/:customer_id
+app.get("/api/customer/addresses/:customer_id", async (req, res) => {
+    try {
+        const [rows] = await query(
+            "SELECT * FROM customer_addresses WHERE customer_id=? ORDER BY is_default DESC, id ASC",
+            [req.params.customer_id]
+        );
+        res.json(rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/customer/addresses
+app.post("/api/customer/addresses", async (req, res) => {
+    try {
+        const { customer_id, label, name, phone, line1, line2, city, state, pincode, is_default } = req.body;
+        if (is_default) {
+            await query("UPDATE customer_addresses SET is_default=FALSE WHERE customer_id=?", [customer_id]);
+        }
+        const [result] = await query(
+            "INSERT INTO customer_addresses (customer_id,label,name,phone,line1,line2,city,state,pincode,is_default) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            [customer_id, label||"Home", name, phone||null, line1, line2||null, city, state, pincode, is_default||false]
+        );
+        res.status(201).json({ success: true, id: result.insertId });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/customer/addresses/:id
+app.delete("/api/customer/addresses/:id", async (req, res) => {
+    try {
+        await query("DELETE FROM customer_addresses WHERE id=?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/customer/addresses/:id/default
+app.patch("/api/customer/addresses/:id/default", async (req, res) => {
+    try {
+        const { customer_id } = req.body;
+        await query("UPDATE customer_addresses SET is_default=FALSE WHERE customer_id=?", [customer_id]);
+        await query("UPDATE customer_addresses SET is_default=TRUE WHERE id=?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CUSTOMER ORDERS ───────────────────────────────────────────
+
+// POST /api/customer/orders  — place order from shopping site (transaction)
+app.post("/api/customer/orders", async (req, res) => {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const { customer_id, items, address_id, payment_method } = req.body;
+        // items: [{product_id, platform_id, branch_id, qty}]
+        if (!items || !items.length) {
+            await conn.rollback();
+            return res.status(400).json({ error: "No items in cart" });
+        }
+
+        // Get customer info for orders table
+        const [[cust]] = await conn.execute(
+            "SELECT id, name, phone FROM customer_accounts WHERE id=?", [customer_id]
+        );
+        if (!cust) { await conn.rollback(); return res.status(404).json({ error: "Customer not found" }); }
+
+        // Upsert into customers table (legacy table used by orders FK)
+        let legacyCustId;
+        const [[legacyCust]] = await conn.execute(
+            "SELECT id FROM customers WHERE phone=? OR email=(SELECT email FROM customer_accounts WHERE id=?)",
+            [cust.phone || "", customer_id]
+        );
+        if (legacyCust) {
+            legacyCustId = legacyCust.id;
+        } else {
+            const [[ca]] = await conn.execute("SELECT * FROM customer_accounts WHERE id=?", [customer_id]);
+            const [cr] = await conn.execute(
+                "INSERT INTO customers (name, phone, email) VALUES (?,?,?)",
+                [ca.name, ca.phone||null, ca.email||null]
+            );
+            legacyCustId = cr.insertId;
+        }
+
+        const orderRefs = [];
+        let grandTotal = 0;
+
+        for (const item of items) {
+            const { product_id, platform_id, branch_id, qty } = item;
+            const [[inv]] = await conn.execute(
+                `SELECT i.stock, p.sell_price FROM inventory i
+                 JOIN products p ON i.product_id=p.id
+                 WHERE i.product_id=? AND i.branch_id=? AND i.platform_id=?`,
+                [product_id, branch_id, platform_id]
+            );
+            if (!inv || inv.stock < qty) {
+                await conn.rollback();
+                return res.status(400).json({ error: `Insufficient stock for product_id=${product_id}` });
+            }
+
+            const [[{ maxId }]] = await conn.execute("SELECT COALESCE(MAX(id),2200) AS maxId FROM orders");
+            const order_ref    = `ORD-${maxId + 1}`;
+            const total_amount = inv.sell_price * qty;
+            grandTotal += total_amount;
+
+            // seller_id=1 (Admin) for web orders
+            const [ores] = await conn.execute(
+                `INSERT INTO orders (order_ref, product_id, branch_id, platform_id, customer_id, seller_id, qty, unit_price, total_amount, payment_method)
+                 VALUES (?,?,?,?,?,1,?,?,?,?)`,
+                [order_ref, product_id, branch_id, platform_id, legacyCustId, qty, inv.sell_price, total_amount, payment_method||"UPI"]
+            );
+
+            // Link to customer_orders
+            await conn.execute(
+                "INSERT INTO customer_orders (customer_id, order_id, address_id) VALUES (?,?,?)",
+                [customer_id, ores.insertId, address_id||null]
+            );
+            orderRefs.push({ order_ref, order_id: ores.insertId, total: total_amount });
+        }
+
+        await conn.commit();
+        res.json({ success: true, orders: orderRefs, grand_total: grandTotal });
+    } catch (e) {
+        await conn.rollback();
+        res.status(500).json({ error: e.message });
+    } finally { conn.release(); }
+});
+
+// GET /api/customer/orders/:customer_id
+app.get("/api/customer/orders/:customer_id", async (req, res) => {
+    try {
+        const [rows] = await query(
+            `SELECT co.id, o.order_ref, o.status, o.total_amount, o.payment_method,
+                    o.created_at, o.updated_at,
+                    p.name AS product_name, p.emoji,
+                    pl.name AS platform, b.name AS branch, o.qty,
+                    d.status AS delivery_status, d.delivery_ref,
+                    ca.line1, ca.city, ca.state, ca.pincode
+             FROM   customer_orders co
+             JOIN   orders o         ON co.order_id   = o.id
+             JOIN   products p       ON o.product_id  = p.id
+             JOIN   platforms pl     ON o.platform_id = pl.id
+             JOIN   branches b       ON o.branch_id   = b.id
+             LEFT JOIN deliveries d  ON d.order_id    = o.id
+             LEFT JOIN customer_addresses ca ON co.address_id = ca.id
+             WHERE  co.customer_id=?
+             ORDER BY co.created_at DESC`,
+            [req.params.customer_id]
+        );
+        res.json(rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+
 // ─────────────────────────────────────────────────────────────
 //  HEALTH CHECK
 // ─────────────────────────────────────────────────────────────
@@ -1343,4 +1786,13 @@ app.listen(PORT, () => {
     console.log(`   GET /api/dashboard/kpis`);
     console.log(`   GET /api/trigger-logs`);
     console.log(`   GET /api/health\n`);
+    console.log(`   ── Customer Shopping Site ──`);
+    console.log(`   POST /api/customer/register`);
+    console.log(`   POST /api/customer/login`);
+    console.log(`   GET  /api/customer/products`);
+    console.log(`   GET  /api/customer/cart/:id`);
+    console.log(`   POST /api/customer/cart`);
+    console.log(`   GET  /api/customer/wishlist/:id`);
+    console.log(`   POST /api/customer/orders`);
+    console.log(`   GET  /api/customer/orders/:id`);
 });

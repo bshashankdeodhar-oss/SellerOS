@@ -75,7 +75,7 @@
     position: relative; overflow: hidden;
   }
   .login-left::before {
-    content: 'ADMIN';
+    content: 'STAFF';
     position: absolute; right: -20px; top: 50%; transform: translateY(-50%) rotate(90deg);
     font-size: 120px; font-weight: 700; color: rgba(255,255,255,0.02); letter-spacing: 20px;
     pointer-events: none; font-family: var(--mono);
@@ -124,7 +124,6 @@
   }
   .login-btn:hover { background: var(--navy3); }
   .login-btn:active { transform: scale(0.98); }
-  .login-meta { font-size: 11px; color: var(--text-dim); text-align: center; font-family: var(--mono); }
 
   /* MAIN APP */
   #app { display: none; min-height: 100vh; }
@@ -409,37 +408,27 @@
       <div class="login-brand">
         <div class="brand-icon">S</div>
         <div>
-          <div class="brand-name">SellerOS Admin</div>
-          <div class="brand-tag">Management Environment</div>
+          <div class="brand-name">SellerOS Staff</div>
+          <div class="brand-tag">All Roles Supported</div>
         </div>
       </div>
       <div class="login-tagline">
-        Full visibility.<br>Total control.
-        <em>One platform.</em>
+        Every role.<br>One login.
+        <em>Full control.</em>
       </div>
       <div class="login-features">
-        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Real-time inventory across all branches & platforms</span></div>
-        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Order monitoring with platform & branch drill-down</span></div>
-        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">User & role management with DB-level enforcement</span></div>
-        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Live trigger logs, query analysis & system insights</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Admin & Manager — full platform control & analytics</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Seller — place orders, view inventory & track sales</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Delivery — view & update assigned delivery status</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span class="feature-text">Viewer — read-only access to reports & dashboards</span></div>
       </div>
     </div>
     <div class="login-right">
-      <div class="login-head">
-        <div class="login-h1">Admin Sign In</div>
-        <div class="login-p">Elevated access — management level only</div>
-      </div>
-      <div class="lfield"><label>Email</label><input type="email" value="admin@selleros.in" placeholder="admin@company.com"></div>
-      <div class="lfield"><label>Password</label><input type="password" value="••••••••••"></div>
-      <div class="lfield">
-        <label>Access Level</label>
-        <select id="login-level">
-          <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
-        </select>
-      </div>
-      <button class="login-btn" onclick="doLogin()">Access Admin Panel →</button>
-      <div class="login-meta">Restricted — authorized personnel only</div>
+      <div class="login-h1">Staff Sign In</div>
+      <div class="login-p" style="margin-bottom:28px">All roles — Admin, Manager, Seller, Delivery, Viewer</div>
+      <div class="lfield"><label>Username</label><input type="text" id="l-username" placeholder="e.g. arjun, rahul, karan"></div>
+      <div class="lfield"><label>Password</label><input type="password" id="l-password" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="login-btn" onclick="doLogin()">Sign In →</button>
     </div>
   </div>
 </div>
@@ -769,25 +758,17 @@ async function api(path, opts = {}) {
 
 // ── LOGIN ─────────────────────────────────────────────────────
 async function doLogin() {
-    const email    = document.querySelector(".login-right input[type=email]")?.value?.trim();
-    const password = document.querySelector(".login-right input[type=password]")?.value;
-    const level    = document.getElementById("login-level")?.value || "admin";
-
-    // Derive username from email prefix for the demo seed data
-    const username = email?.split("@")[0] || "arjun";
+    const username = document.getElementById("l-username")?.value?.trim();
+    const password = document.getElementById("l-password")?.value;
+    if (!username || !password) return showToast("Enter username and password");
 
     try {
         const data = await api("/auth/login", {
             method: "POST",
-            body: JSON.stringify({ username, password: level === "admin" ? "admin123" : "manager123" }),
+            body: JSON.stringify({ username, password }),
         });
         currentUser  = data.user;
         currentLevel = data.user.role.toLowerCase();
-
-        if (!["admin","manager"].includes(currentLevel)) {
-            showToast("This portal is for Admin/Manager roles only.");
-            return;
-        }
 
         document.getElementById("login-screen").classList.add("hidden");
         setTimeout(() => {
@@ -809,6 +790,52 @@ async function initAdmin() {
     document.getElementById("nav-username").textContent   = currentUser.name;
     document.getElementById("nav-avatar").textContent     = initials;
     document.getElementById("nav-role-badge").textContent = currentUser.role.toUpperCase();
+
+    // Update env label
+    const envLabel = document.querySelector(".topnav-env");
+    if (envLabel) envLabel.textContent = "/ " + currentUser.role.toUpperCase();
+
+    // ── ROLE-AWARE SIDEBAR ─────────────────────────────────
+    // Each role sees only what they're permitted to use
+    const role = currentUser.role;
+    const access = {
+        dashboard: ["Admin","Manager","Seller","Viewer","Delivery"],
+        inventory:  ["Admin","Manager","Seller","Viewer"],
+        orders:     ["Admin","Manager","Seller","Viewer"],
+        delivery:   ["Admin","Manager","Delivery"],
+        users:      ["Admin","Manager"],
+        branches:   ["Admin","Manager"],
+        insights:   ["Admin","Manager"],
+    };
+    document.querySelectorAll(".slink[data-page]").forEach(link => {
+        const page = link.dataset.page;
+        const allowed = access[page] || [];
+        link.style.display = allowed.includes(role) ? "" : "none";
+    });
+
+    // Show/hide top nav tabs based on role
+    const tabAccess = {
+        dashboard: true,
+        inventory:  ["Admin","Manager","Seller","Viewer"].includes(role),
+        orders:     ["Admin","Manager","Seller","Viewer"].includes(role),
+        users:      ["Admin","Manager"].includes(role),
+        insights:   ["Admin","Manager"].includes(role),
+    };
+    document.querySelectorAll(".topnav-tab").forEach(tab => {
+        const page = tab.getAttribute("onclick")?.match(/'(\w+)'/)?.[1];
+        if (page && tabAccess[page] === false) tab.style.display = "none";
+    });
+
+    // Role-specific welcome message
+    const greetings = {
+        Admin:    "Full access — all modules enabled",
+        Manager:  "Management access — your branch data",
+        Seller:   "Seller portal — place and view orders",
+        Viewer:   "Read-only access — view mode active",
+        Delivery: "Delivery portal — your assigned orders",
+    };
+    const subEl = document.querySelector("#page-dashboard .ph-sub");
+    if (subEl) subEl.textContent = greetings[role] || "";
 
     // Load reference data in parallel
     [allPlatforms, allBranches, allCategories] = await Promise.all([
