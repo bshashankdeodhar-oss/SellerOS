@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS customer_otp_tokens (
 );
 
 -- Indexes
-CREATE INDEX IF NOT EXISTSmysql -u root -p selleros < schema_customer.sql idx_cart_customer     ON cart(customer_id);
+CREATE INDEX IF NOT EXISTS idx_cart_customer ON cart(customer_id);
 CREATE INDEX IF NOT EXISTS idx_wishlist_customer ON wishlist(customer_id);
 CREATE INDEX IF NOT EXISTS idx_cust_orders       ON customer_orders(customer_id);
 
