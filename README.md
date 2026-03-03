@@ -32,15 +32,19 @@ Open PowerShell and enter MySQL:
 
 ```powershell
 mysql -u root -p
+
+CREATE DATABASE SellerOS;
+SHOW DATABASES;
+
 ```
 
 Then run each file **in order**:
 
 ```sql
-source D:/Selleros/schema.sql
-source D:/Selleros/schema_auth.sql
-source D:/Selleros/schema_customer.sql
-source D:/Selleros/schema_extra_triggers.sql
+Get-Content schema.sql | mysql -u root -p selleros
+Get-Content schema_auth.sql | mysql -u root -p selleros          
+Get-Content schema_customer.sql | mysql -u root -p selleros      
+Get-Content schema_extra_triggers.sql | mysql -u root -p selleros
 ```
 
 Then fill all inventory to 100 units (type line by line, press Enter after each):
@@ -243,3 +247,4 @@ All endpoints run at `http://localhost:3001`
 
 **403 Forbidden on an API call**
 → Your role doesn't have access. Check `/api/permissions/check?user_id=N`.
+
