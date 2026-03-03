@@ -443,28 +443,6 @@ app.post("/api/branches", async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post("/api/customer/register", async (req, res) => {
-    try {
-        const { name, email, phone, password } = req.body;
-        if (!name || !password || (!email && !phone))
-            return res.status(400).json({ error: "Name, password, email or phone required" });
-
-        const [[exists]] = await query(
-            "SELECT id FROM customers WHERE email=? OR phone=?",
-            [email || "", phone || ""]
-        );
-        if (exists)
-            return res.status(409).json({ error: "Customer already exists" });
-
-        const [result] = await query(
-            "INSERT INTO customers (name, email, phone, password) VALUES (?,?,?,?)",
-            [name, email || null, phone || null, password]
-        );
-
-        res.status(201).json({ success: true, customer_id: result.insertId });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 // ─────────────────────────────────────────────────────────────
 //  PLATFORMS
 // ─────────────────────────────────────────────────────────────
@@ -745,66 +723,6 @@ app.patch("/api/deliveries/:id/status", async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 //  USERS (admin only)
 // ─────────────────────────────────────────────────────────────
-
-// GET /api/users
-app.get("/api/users",
-    requireRole("Admin", "Manager"),
-    async (req, res) => {
-    try {
-        const { role, branch_id } = req.query;
-        let sql = `
-            SELECT  u.id, u.name, u.username, u.email, u.is_active, u.created_at,
-                    r.name AS role,
-                    b.name AS branch
-            FROM    users u
-            JOIN    roles r       ON u.role_id   = r.id
-            LEFT JOIN branches b  ON u.branch_id = b.id
-            WHERE   1=1`;
-        const params = [];
-        if (role)      { sql += " AND r.name = ?";       params.push(role); }
-        if (branch_id) { sql += " AND u.branch_id = ?";  params.push(branch_id); }
-        sql += " ORDER BY r.name, u.name";
-        const [rows] = await query(sql, params);
-        res.json(rows);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /api/users
-app.post("/api/users",
-    requireRole("Admin"),
-    async (req, res) => {
-    try {
-        const { name, username, email, password, role_id, branch_id } = req.body;
-        const [result] = await query(
-            "INSERT INTO users (name, username, email, password, role_id, branch_id) VALUES (?,?,?,?,?,?)",
-            [name, username, email, password, role_id, branch_id || null]
-        );
-        res.json({ success: true, id: result.insertId });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// PATCH /api/users/:id/active
-app.patch("/api/users/:id/active",
-    requireRole("Admin"),
-    async (req, res) => {
-    try {
-        const { is_active } = req.body;
-        await query("UPDATE users SET is_active = ? WHERE id = ?", [is_active, req.params.id]);
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// PATCH /api/users/:id/role
-app.patch("/api/users/:id/role",
-    requireRole("Admin"),
-    async (req, res) => {
-    try {
-        const { role_id, branch_id } = req.body;
-        await query("UPDATE users SET role_id = ?, branch_id = ? WHERE id = ?",
-            [role_id, branch_id || null, req.params.id]);
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
 
 // ─────────────────────────────────────────────────────────────
 //  DASHBOARD / ANALYTICS  (admin only)
