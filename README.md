@@ -25,7 +25,8 @@ selleros/
 Open your terminal and run:
 
 ```bash
-mysql -u root -p < schema.sql
+cd SellerOS
+Get-Content .\schema.sql | mysql -u root -p
 ```
 
 This creates the `selleros` database with all tables, triggers, and seed data.
@@ -165,5 +166,6 @@ All endpoints run at `http://localhost:3001`
 **Port 3001 already in use**
 → Change `PORT=3002` in `.env` and update `API_BASE` in both HTML files.
 #
+
 
 
