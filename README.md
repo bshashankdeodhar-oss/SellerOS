@@ -36,6 +36,7 @@ mysql -u root -p
 CREATE DATABASE SellerOS;
 SHOW DATABASES;
 
+exit
 ```
 
 Then run each file **in order**:
@@ -247,4 +248,5 @@ All endpoints run at `http://localhost:3001`
 
 **403 Forbidden on an API call**
 → Your role doesn't have access. Check `/api/permissions/check?user_id=N`.
+
 
